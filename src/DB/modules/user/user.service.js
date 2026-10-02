@@ -50,10 +50,10 @@ export async function signUpWithGmail(req ,res){
 if (user.provider === "system") {
      throw new Error('login with system only')
 }
-            const token_access =jwt.sign({userId:user._id,email:user.email} ,'y-access',{
+    const token_access =jwt.sign({userId:user._id} ,'y-access',{
         expiresIn:60 * 5,
     })
-    const token_refresh =jwt.sign({userId:user._id,email:user.email} ,'y-refresh')
+    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh')
 
 
     return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
@@ -63,15 +63,7 @@ if (user.provider === "system") {
 
 
 export async function getProfile(req, res) {
-  const user = await dbService.findOne({
-    model: userModel,
-    filter: {
-      email: req.user.email.toLowerCase(),
-    },
-  })
-  if (!user) {
-    throw new Error('user not found')
-  }
+  const user = req.user
 
   return res.status(200).json({
     message: 'done',
@@ -96,14 +88,14 @@ export async function signIn(req ,res){
     if(!await Compare(password ,user.password)){
         throw new Error('inValid password')
     }
-    const token_access =jwt.sign({userId:user._id,email:user.email} ,'y-access',{
+    const token_access =jwt.sign({userId:user._id} ,'y-access',{
         expiresIn:60 * 5,
         audience:'https://localhost:4000',
         issuer:'https://localhost:3000 ',
         // notBefore:60,
         // noTimestamp:true
     })
-    const token_refresh =jwt.sign({userId:user._id,email:user.email} ,'y-refresh',{
+    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
         expiresIn:60
     })
 
