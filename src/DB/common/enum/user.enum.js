@@ -3,7 +3,7 @@ export const GenderEnum = {
     female: 'female'
 }
 
-export const roleEnum = {
+export const RoleEnum = {
     user: 'user',
     admin: 'admin'
 }

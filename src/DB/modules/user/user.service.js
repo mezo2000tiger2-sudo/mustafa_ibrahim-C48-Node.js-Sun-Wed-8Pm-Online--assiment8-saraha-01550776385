@@ -4,6 +4,7 @@ import { OAuth2Client } from "google-auth-library"
 import * as dbService from '../../db.service.js'
 import { Decrypt, Encrypt } from "../../common/security/encrypt.js"
 import { Compare, Hash } from "../../common/security/hash.js"
+import { ProvidorEnum } from "../../common/enum/user.enum.js"
 
 
 const client = new OAuth2Client();
@@ -42,12 +43,12 @@ export async function signUpWithGmail(req ,res){
                 , email
                 ,profileImage:picture
                 ,isConfirmed:email_verified,
-                providor:'google'
+                providor:ProvidorEnum.google
             }
         })
     }
 
-if (user.provider === "system") {
+if (user.provider === ProvidorEnum.system) {
      throw new Error('login with system only')
 }
     const token_access =jwt.sign({userId:user._id} ,'y-access',{
