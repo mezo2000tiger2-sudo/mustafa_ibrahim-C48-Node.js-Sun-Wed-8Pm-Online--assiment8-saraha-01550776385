@@ -15,7 +15,7 @@ export async function signUp(req ,res){
 
     const user = await dbService.create({
         model:userModel,
-        data:{fName , lName , email, password:await Hash(password) ,age ,gender ,phone:Encrypt(phone)}
+        data:{fName , lName , email, password:await Hash(password) ,age ,gender ,phone: phone ? Encrypt(phone) : undefined}
     })
     return res.status(201).json({message:'done',user})
 }
@@ -68,7 +68,7 @@ export async function getProfile(req, res) {
 
   return res.status(200).json({
     message: 'done',
-    user: { ...user._doc, phone: Decrypt(user.phone) },
+    user: { ...user._doc, phone: user.phone ? Decrypt(user.phone) : user.phone },
   })
 }
 
@@ -85,7 +85,7 @@ export async function signIn(req ,res){
     if(user.isConfirmed !== true){
         throw new Error('account not confirmed')
 
-    }
+    } 
     if(!await Compare(password ,user.password)){
         throw new Error('inValid password')
     }
