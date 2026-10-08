@@ -10,5 +10,6 @@ export const RoleEnum = {
 
 export const ProvidorEnum = {
     system: 'system',
-    google: 'google'
+    google: 'google',
+    github:'github'
 }
