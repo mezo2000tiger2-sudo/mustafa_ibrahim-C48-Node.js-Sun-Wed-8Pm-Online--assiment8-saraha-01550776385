@@ -10,7 +10,7 @@ import { multerLocal } from "../../common/middleware/multer.js";
 const userRouter = Router();
 
 
-userRouter.post('/signup',multerLocal('users').single('avatar'),validation(signUpSchema),signUp)
+userRouter.post('/signup',multerLocal({customStorage: 'users', customTypes: ['image/png', 'image/jpg', 'image/jpeg']}).single('avatar'),validation(signUpSchema),signUp)
 userRouter.post('/signup/gmail',signUpWithGmail)
 userRouter.post('/signup/github',signUpWithGithub)
 userRouter.post('/signin',validation(signinSchema),signIn)

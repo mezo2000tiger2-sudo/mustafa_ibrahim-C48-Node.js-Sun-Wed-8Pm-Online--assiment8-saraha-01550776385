@@ -55,7 +55,7 @@ const userSchema =new mongoose.Schema({
         default:GenderEnum.male
     },
     avatar: String,
-    profile: [String],
+    coverImages: [String],
     providor:{
         type:String,
         enum:Object.values(ProvidorEnum),

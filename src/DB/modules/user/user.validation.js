@@ -1,5 +1,6 @@
 import joi from "joi"
 import { GenderEnum } from "../../common/enum/user.enum.js"
+import { generalRules } from "../../common/utils/generalRules.js"
 
 export const signUpSchema= {
     body:joi.object({
@@ -8,18 +9,20 @@ export const signUpSchema= {
             'string.min':'fName is at least two characters',
         }), 
         lName:joi.string().min(2).max(50).required(), 
-        email:joi.string().min(2).email({tlds: { allow: false }}).max(50).required(), 
-        password:joi.string().required(), 
-        //  cPassword:joi.string().valid(joi.ref('password')).required(), 
+        email:generalRules.email.required(), 
+        password:generalRules.password.required(), 
         age:joi.number().min(18).max(120).required(),  
         gender: joi.string().valid(GenderEnum.male, GenderEnum.female),
         phone: joi.string(),
+        //  cPassword:joi.string().valid(joi.ref('password')).required(), 
         // test: joi.array().items(joi.string()),
-}).required()
+}).required(),
+file:generalRules.file 
 }
+
 export const signinSchema= {
     body:joi.object({
-        email:joi.string().min(2).email({tlds: { allow: false }}).max(50).required(), 
-        password:joi.string().required(), 
+        email:generalRules.email.required(), 
+        password:generalRules.password.required(), 
 }).required()
 }

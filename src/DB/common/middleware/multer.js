@@ -2,7 +2,7 @@ import multer  from "multer"
 import {randomUUID} from "crypto"
 import fs from "node:fs"
 
-export function multerLocal(customStorage) {
+export function multerLocal({customStorage ='general' , customTypes =[]}) {
     if(!fs.existsSync(`uploads/${customStorage}`)) {
         fs.mkdirSync(`uploads/${customStorage}`, { recursive: true });
     }
@@ -16,7 +16,16 @@ export function multerLocal(customStorage) {
     })
 
 
-const upload = multer({ storage })
+
+  function fileFilter (req, file, cb) {
+    if(!customTypes.includes(file.mimetype)) {
+        cb(new Error('inValid file!'))
+    }
+    cb(null, true)
+  }
+
+
+const upload = multer({ storage, fileFilter })
 return upload
 }
 

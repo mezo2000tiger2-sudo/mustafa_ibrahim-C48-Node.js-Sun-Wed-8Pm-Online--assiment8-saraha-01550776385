@@ -5,24 +5,48 @@ import * as dbService from '../../db.service.js'
 import { Decrypt, Encrypt } from "../../common/security/encrypt.js"
 import { Compare, Hash } from "../../common/security/hash.js"
 import { ProvidorEnum } from "../../common/enum/user.enum.js"
+import { unlink } from 'node:fs/promises'
 
 
 const client = new OAuth2Client();
 
+//================ signUp ==========================
 
 export async function signUp(req ,res){
-        const {fName , lName , email, password ,age ,gender,phone}=req.body
-                console.log('test',req.files)
+    const {fName , lName , email, password ,age ,gender,phone}=req.body
+    let user
+    try {
+        user = await dbService.create({
+            model:userModel,
+            data:{
+                fName,
+                lName,
+                email,
+                password:await Hash(password),
+                age,
+                gender,
+                phone: phone ? Encrypt(phone) : undefined,
+                avatar:req.file?.path
+            }
+        })
+    } catch (error) {
+        if (req.file) {
+            await unlink(req.file.path).catch((cleanupError) => {
+                console.error('Failed to delete uploaded file:', cleanupError)
+            })
+        }
 
+        if (error.code === 11000) {
+            throw new Error('Email already exists', { cause: 409 })
+        }
 
-    const user = await dbService.create({
-        model:userModel,
-        data:{fName , lName , email, password:await Hash(password) ,age ,gender ,phone: phone ? Encrypt(phone) : undefined , avatar:req.files?.avatar?.[0]?.path , profile:req.files?.profile?.map(file => file.path)}
-    })
+        throw error
+    }
+
     return res.status(201).json({message:'done',user})
 }
 
-
+//================ signUpWithGmail ==========================
 export async function signUpWithGmail(req ,res){
     const {idToken}=req.body
 
@@ -64,6 +88,7 @@ if (user.provider === ProvidorEnum.system) {
 
 }
 
+    //================ signUpWithGithub ==========================
 
 export async function signUpWithGithub(req ,res){
     const {accessToken}=req.body
@@ -125,7 +150,7 @@ export async function signUpWithGithub(req ,res){
 
     return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
 }
-
+//================ getProfile ==========================
 export async function getProfile(req, res) {
   const user = req.user
 
@@ -134,7 +159,7 @@ export async function getProfile(req, res) {
     user: { ...user._doc, phone: user.phone ? Decrypt(user.phone) : user.phone },
   })
 }
-
+//================ signin ==========================
 export async function signIn(req ,res){
         const {email, password}=req.body
 
@@ -170,4 +195,41 @@ export async function signIn(req ,res){
 
     return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
 
+}
+//================ refreshToken ==========================
+export async function refreshToken(req, res) {
+    const { authorization } = req.body
+
+    if (!authorization) {
+        throw new Error('refresh token is required', { cause: 400 })
+    }
+
+    let decoded
+    try {
+        decoded = jwt.verify(authorization, 'y-refresh')
+    } catch (error) {
+        throw new Error('invalid refresh token', { cause: 401 })
+    }
+
+    if (!decoded || !decoded.userId) {
+        throw new Error('invalid refresh token', { cause: 401 })
+    }
+
+    const user = await dbService.findById({ model: userModel, id: decoded.userId })
+    if (!user) {
+        throw new Error('invalid refresh token', { cause: 401 })
+    }
+
+    const token_access = jwt.sign({ userId: user._id }, 'y-access', {
+        expiresIn: 60 * 5,
+    })
+    const token_refresh = jwt.sign({ userId: user._id }, 'y-refresh', {
+        expiresIn: "7d",
+    })
+
+    return res.status(200).json({
+        message: 'done',
+        user: { name: user.fullName, email: user.email },
+        token: { token_access, token_refresh },
+    })
 }
