@@ -24,6 +24,11 @@ export async function authentication(req, res, next) {
   if(!user){
     throw new Error('user not found',{cause:404})
   }
+  console.log(user.changeCredentialsAt.getTime())
+  console.log(payload.iat )
+  // if(user.changeCredentialsAt.getTime()){
+
+  // }
   req.user = user
   req.payload = payload
     next()

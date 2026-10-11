@@ -12,7 +12,7 @@ const client = new OAuth2Client();
 
 //================ signUp ==========================
 
-export async function signUp(req ,res){
+export async function signUp(req ,res){ 
     const {fName , lName , email, password ,age ,gender,phone}=req.body
     let user
     try {
@@ -80,7 +80,9 @@ if (user.provider === ProvidorEnum.system) {
     const token_access =jwt.sign({userId:user._id} ,'y-access',{
         expiresIn:60 * 5,
     })
-    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh')
+    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
+        expiresIn:'7d',
+    })
 
 
     return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
@@ -146,19 +148,13 @@ export async function signUpWithGithub(req ,res){
     const token_access =jwt.sign({userId:user._id} ,'y-access',{
         expiresIn:60 * 5,
     })
-    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh')
+    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
+        expiresIn:'7d',
+    })
 
     return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
 }
-//================ getProfile ==========================
-export async function getProfile(req, res) {
-  const user = req.user
 
-  return res.status(200).json({
-    message: 'done',
-    user: { ...user._doc, phone: user.phone ? Decrypt(user.phone) : user.phone },
-  })
-}
 //================ signin ==========================
 export async function signIn(req ,res){
         const {email, password}=req.body
@@ -189,7 +185,7 @@ export async function signIn(req ,res){
         // noTimestamp:true
     })
     const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
-        expiresIn:60
+        expiresIn:'7d',
     })
 
 
@@ -198,38 +194,113 @@ export async function signIn(req ,res){
 }
 //================ refreshToken ==========================
 export async function refreshToken(req, res) {
-    const { authorization } = req.body
+  const { authorization } = req.headers
 
-    if (!authorization) {
-        throw new Error('refresh token is required', { cause: 400 })
-    }
+  if (!authorization) {
+    return res.status(401).json({ message: 'authorization is required' })
+  }
 
-    let decoded
-    try {
-        decoded = jwt.verify(authorization, 'y-refresh')
-    } catch (error) {
-        throw new Error('invalid refresh token', { cause: 401 })
-    }
+  const [scheme, token] = authorization.split(' ')
+  if (scheme !== 'Bearer' || !token) {
+    return res.status(401).json({ message: 'invalid authorization format' })
+  }
 
-    if (!decoded || !decoded.userId) {
-        throw new Error('invalid refresh token', { cause: 401 })
-    }
-
-    const user = await dbService.findById({ model: userModel, id: decoded.userId })
-    if (!user) {
-        throw new Error('invalid refresh token', { cause: 401 })
-    }
-
-    const token_access = jwt.sign({ userId: user._id }, 'y-access', {
-        expiresIn: 60 * 5,
-    })
-    const token_refresh = jwt.sign({ userId: user._id }, 'y-refresh', {
-        expiresIn: "7d",
+    const payload = jwt.verify(token, 'y-refresh')
+        const user = await dbService.findOne({
+    model: userModel,
+    filter: {
+      _id: payload.userId
+    },
+  })
+  if(!user){
+    throw new Error('user not found with this refresh token',{cause:404})
+  }
+    const token_access =jwt.sign({userId:user._id} ,'y-access',{
+        expiresIn:60 * 5,
     })
 
-    return res.status(200).json({
-        message: 'done',
-        user: { name: user.fullName, email: user.email },
-        token: { token_access, token_refresh },
-    })
+    return res.status(200).json({message:'done',token:{token_access}})
+}
+//================ getProfile ==========================
+export async function getProfile(req, res) {
+  const user = req.user
+
+  return res.status(200).json({
+    message: 'done',
+    user: { ...user._doc, phone: user.phone ? Decrypt(user.phone) : user.phone },
+  })
+}
+//================ shareProfile ==========================
+export async function shareProfile(req, res) {
+    const { id } = req.params
+  const user =await dbService.findById({
+    model: userModel,
+    id,
+    options:{
+        password:0,
+        __v:0,
+        isConfirmed:0,
+    }
+  })
+  if (!user) {
+    throw new Error('user not found', { cause: 404 })
+  }
+  if(user.phone){
+    user.phone = Decrypt(user.phone)
+  }
+
+  return res.status(200).json({
+    message: 'done',
+    user,
+  })
+}
+
+//================ updateProfile ==========================
+export async function updateProfile(req ,res){ 
+    const {fName , lName ,age ,gender,phone}=req.body
+    let updateQuery ={}
+    if(fName !== undefined) updateQuery.fName = fName
+    if(lName !== undefined) updateQuery.lName = lName
+    if(age !== undefined) updateQuery.age = age
+    if(gender !== undefined) updateQuery.gender = gender
+    if(phone !== undefined) updateQuery.phone = Encrypt(phone)
+        const updatedUser = await dbService.findByIdAndUpdate({
+            model:userModel,
+            id:req.user._id,
+            update:updateQuery
+        })
+
+
+    return res.status(201).json({message:'done',updatedUser})
+}
+//================ updatePassword ==========================
+export async function updatePassword(req ,res){ 
+    const {oldpassword,newpassword}=req.body
+    const user = req.user
+    if(!Compare(oldpassword ,req.user.password)){
+        throw new Error('inValid old password')
+    }
+    user.password = Hash(newpassword)
+        const updatedUser = await dbService.findByIdAndUpdate({
+            model:userModel,
+            id:req.user._id,
+            update:{password:user.password}
+        })
+
+
+    return res.status(201).json({message:'done',updatedUser})
+}
+
+//================ logout ==========================
+export async function logout(req ,res){ 
+    const user = req.user
+    user.changeCredentialsAt = new Date()
+        const updatedUser = await dbService.findByIdAndUpdate({
+            model:userModel,
+            id:req.user._id,
+            update:{changeCredentialsAt:user.changeCredentialsAt}
+        })
+
+
+    return res.status(201).json({message:'done'})
 }

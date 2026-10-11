@@ -13,9 +13,26 @@ export const signUpSchema= {
         password:generalRules.password.required(), 
         age:joi.number().min(18).max(120).required(),  
         gender: joi.string().valid(GenderEnum.male, GenderEnum.female),
-        phone: joi.string(),
+        phone: joi.string()
         //  cPassword:joi.string().valid(joi.ref('password')).required(), 
         // test: joi.array().items(joi.string()),
+}).required(),
+file:generalRules.file 
+}
+export const updateProfileSchema= {
+    body:joi.object({
+        fName:joi.string().min(2).max(50).alphanum().messages({
+            'any.required':'fName is required',
+            'string.min':'fName is at least two characters',
+        }), 
+        lName:joi.string().min(2).max(50).messages({
+            'any.required':'fName is required',
+            'string.min':'fName is at least two characters',
+        }), 
+        age:joi.number().min(18).max(120),  
+        gender: joi.string().valid(GenderEnum.male, GenderEnum.female),
+        phone: joi.string()
+
 }).required(),
 file:generalRules.file 
 }
@@ -25,4 +42,22 @@ export const signinSchema= {
         email:generalRules.email.required(), 
         password:generalRules.password.required(), 
 }).required()
+}
+export const updatePasswordSchema= {
+    body:joi.object({
+        oldpassword:generalRules.password.required(), 
+        newpassword:generalRules.password.required(), 
+}).required()
+}
+
+
+
+
+export const refreshTokenSchema ={
+    headers: generalRules.token.required()
+}
+export const shareProfileSchema ={
+    params: joi.object({
+        id: generalRules.id.required()
+    }).required()
 }
