@@ -9,7 +9,7 @@ const connectDb = async (port , app) => {
         });
         // await mongoose.connect("mongodb+srv://mustafa:mezo362012@cluster0.38xmihw.mongodb.net/saharah", {
         // });
-        app.listen(port, () => {
+            app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
         });
         console.log("Connected to MongoDB");

@@ -6,6 +6,8 @@ import { Decrypt, Encrypt } from "../../common/security/encrypt.js"
 import { Compare, Hash } from "../../common/security/hash.js"
 import { ProvidorEnum } from "../../common/enum/user.enum.js"
 import { unlink } from 'node:fs/promises'
+import { randomUUID } from "node:crypto"
+import revokeTokenModel from "../../models/revokeToken.model.js"
 
 
 const client = new OAuth2Client();
@@ -177,15 +179,18 @@ export async function signIn(req ,res){
     if(!await Compare(password ,user.password)){
         throw new Error('inValid password')
     }
+    const tokenId = randomUUID()
     const token_access =jwt.sign({userId:user._id} ,'y-access',{
         expiresIn:60 * 5,
         audience:'https://localhost:4000',
         issuer:'https://localhost:3000 ',
+        jwtid:tokenId,
         // notBefore:60,
         // noTimestamp:true
     })
     const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
         expiresIn:'7d',
+        jwtid:tokenId,
     })
 
 
@@ -281,6 +286,7 @@ export async function updatePassword(req ,res){
         throw new Error('inValid old password')
     }
     user.password = Hash(newpassword)
+    user.changeCredentialsAt = new Date()
         const updatedUser = await dbService.findByIdAndUpdate({
             model:userModel,
             id:req.user._id,
@@ -293,14 +299,26 @@ export async function updatePassword(req ,res){
 
 //================ logout ==========================
 export async function logout(req ,res){ 
+    const {flag}=req.query
     const user = req.user
+    if(flag === 'all'){
     user.changeCredentialsAt = new Date()
         const updatedUser = await dbService.findByIdAndUpdate({
             model:userModel,
             id:req.user._id,
             update:{changeCredentialsAt:user.changeCredentialsAt}
         })
-
-
+    }else{
+        dbService.create({
+            model:revokeTokenModel,
+            data:{
+                tokenId:req.payload.jti 
+                ,userId:user._id 
+                ,expireAt:new Date(req.payload.exp * 1000)
+            }
+        })
+        console.log('token revoked for this device')
+    }
     return res.status(201).json({message:'done'})
+
 }
