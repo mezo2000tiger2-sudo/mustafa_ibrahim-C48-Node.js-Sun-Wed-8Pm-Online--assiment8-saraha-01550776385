@@ -1,324 +1,354 @@
-import userModel from "../../models/user.model.js"
-import jwt from 'jsonwebtoken'
-import { OAuth2Client } from "google-auth-library"
-import * as dbService from '../../db.service.js'
-import { Decrypt, Encrypt } from "../../common/security/encrypt.js"
-import { Compare, Hash } from "../../common/security/hash.js"
-import { ProvidorEnum } from "../../common/enum/user.enum.js"
-import { unlink } from 'node:fs/promises'
-import { randomUUID } from "node:crypto"
-import revokeTokenModel from "../../models/revokeToken.model.js"
-
+import userModel from "../../models/user.model.js";
+import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+import * as dbService from "../../service/db.service.js";
+import { Decrypt, Encrypt } from "../../common/security/encrypt.js";
+import { Compare, Hash } from "../../common/security/hash.js";
+import { ProvidorEnum } from "../../common/enum/user.enum.js";
+import { unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import revokeTokenModel from "../../models/revokeToken.model.js";
 
 const client = new OAuth2Client();
 
 //================ signUp ==========================
 
-export async function signUp(req ,res){ 
-    const {fName , lName , email, password ,age ,gender,phone}=req.body
-    let user
-    try {
-        user = await dbService.create({
-            model:userModel,
-            data:{
-                fName,
-                lName,
-                email,
-                password:await Hash(password),
-                age,
-                gender,
-                phone: phone ? Encrypt(phone) : undefined,
-                avatar:req.file?.path
-            }
-        })
-    } catch (error) {
-        if (req.file) {
-            await unlink(req.file.path).catch((cleanupError) => {
-                console.error('Failed to delete uploaded file:', cleanupError)
-            })
-        }
-
-        if (error.code === 11000) {
-            throw new Error('Email already exists', { cause: 409 })
-        }
-
-        throw error
+export async function signUp(req, res) {
+  const { fName, lName, email, password, age, gender, phone } = req.body;
+  let user;
+  try {
+    user = await dbService.create({
+      model: userModel,
+      data: {
+        fName,
+        lName,
+        email,
+        password: await Hash(password),
+        age,
+        gender,
+        phone: phone ? Encrypt(phone) : undefined,
+        avatar: req.file?.path,
+      },
+    });
+  } catch (error) {
+    if (req.file) {
+      await unlink(req.file.path).catch((cleanupError) => {
+        console.error("Failed to delete uploaded file:", cleanupError);
+      });
     }
 
-    return res.status(201).json({message:'done',user})
+    if (error.code === 11000) {
+      throw new Error("Email already exists", { cause: 409 });
+    }
+
+    throw error;
+  }
+
+  return res.status(201).json({ message: "done", user });
 }
 
 //================ signUpWithGmail ==========================
-export async function signUpWithGmail(req ,res){
-    const {idToken}=req.body
+export async function signUpWithGmail(req, res) {
+  const { idToken } = req.body;
 
-    const decoded = await client.verifyIdToken({
-        idToken,
-        audience: '1091439877151-u23ui17d3vke64q0gphg9is6hdd1n1ri.apps.googleusercontent.com',
+  const decoded = await client.verifyIdToken({
+    idToken,
+    audience:
+      "1091439877151-u23ui17d3vke64q0gphg9is6hdd1n1ri.apps.googleusercontent.com",
+  });
+  const { picture, given_name, family_name, email, email_verified } =
+    decoded.getPayload();
+  let user = await dbService.findOne({
+    model: userModel,
+    filter: {
+      email: email.toLowerCase(),
+    },
+  });
+  if (!user) {
+    user = await dbService.create({
+      model: userModel,
+      data: {
+        fName: given_name,
+        lName: family_name,
+        email,
+        avatar: picture,
+        isConfirmed: email_verified,
+        providor: ProvidorEnum.google,
+      },
     });
-    const {picture,given_name,family_name,email,email_verified} =decoded.getPayload()
-        let user = await dbService.findOne({
-        model:userModel,
-        filter:{
-            email:email.toLowerCase()
-        }
-    })
-    if(!user){
-        user = await dbService.create({
-            model:userModel,
-            data:{fName:given_name
-                , lName:family_name
-                , email
-                ,avatar:picture
-                ,isConfirmed:email_verified,
-                providor:ProvidorEnum.google
-            }
-        })
-    }
+  }
 
-if (user.provider === ProvidorEnum.system) {
-     throw new Error('login with system only')
-}
-    const token_access =jwt.sign({userId:user._id} ,'y-access',{
-        expiresIn:60 * 5,
-    })
-    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
-        expiresIn:'7d',
-    })
+  if (user.provider === ProvidorEnum.system) {
+    throw new Error("login with system only");
+  }
+  const token_access = jwt.sign({ userId: user._id }, "y-access", {
+    expiresIn: 60 * 5,
+  });
+  const token_refresh = jwt.sign({ userId: user._id }, "y-refresh", {
+    expiresIn: "7d",
+  });
 
-
-    return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
-    console.log(playload)
-
+  return res
+    .status(200)
+    .json({
+      message: "done",
+      user: { name: user.fullName, email: user.email },
+      token: { token_access, token_refresh },
+    });
+  console.log(playload);
 }
 
-    //================ signUpWithGithub ==========================
+//================ signUpWithGithub ==========================
 
-export async function signUpWithGithub(req ,res){
-    const {accessToken}=req.body
-    if(!accessToken){
-        throw new Error('access token is required',{cause:400})
-    }
-    const headers={Authorization:`Bearer ${accessToken}`}
+export async function signUpWithGithub(req, res) {
+  const { accessToken } = req.body;
+  if (!accessToken) {
+    throw new Error("access token is required", { cause: 400 });
+  }
+  const headers = { Authorization: `Bearer ${accessToken}` };
 
-    const response=await fetch('https://api.github.com/user',{headers})
-    if(!response.ok){
-        throw new Error('invalid access token',{cause:401})
-    }
-    const {avatar_url,name,login} =await response.json()
+  const response = await fetch("https://api.github.com/user", { headers });
+  if (!response.ok) {
+    throw new Error("invalid access token", { cause: 401 });
+  }
+  const { avatar_url, name, login } = await response.json();
 
-    const emailsRes=await fetch('https://api.github.com/user/emails',{headers})
-    if(!emailsRes.ok){
-        throw new Error('unable to read github emails',{cause:400})
-    }
-    const emails=await emailsRes.json()
-    if(!Array.isArray(emails)){
-        throw new Error('invalid github emails response',{cause:502})
-    }
-    const email=emails.find(e=>e.primary && e.verified)?.email
-    if(!email){
-        throw new Error('no verified email on github account',{cause:400})
-    }
+  const emailsRes = await fetch("https://api.github.com/user/emails", {
+    headers,
+  });
+  if (!emailsRes.ok) {
+    throw new Error("unable to read github emails", { cause: 400 });
+  }
+  const emails = await emailsRes.json();
+  if (!Array.isArray(emails)) {
+    throw new Error("invalid github emails response", { cause: 502 });
+  }
+  const email = emails.find((e) => e.primary && e.verified)?.email;
+  if (!email) {
+    throw new Error("no verified email on github account", { cause: 400 });
+  }
 
-    let user = await dbService.findOne({
-        model:userModel,
-        filter:{
-            email:email.toLowerCase()
-        }
-    })
-    if(!user){
-        const [given_name,...rest]=(name || login).trim().split(' ').filter(Boolean)
-        const family_name=rest.join(' ') || login
-        if(given_name.length < 2 || given_name.length > 50 || family_name.length < 2 || family_name.length > 50){
-            throw new Error('github first and last names must be 2-50 characters',{cause:400})
-        }
-        [user] = await dbService.create({
-            model:userModel,
-            data:{fName:given_name
-                , lName:family_name
-                , email:email.toLowerCase()
-                ,avatar:avatar_url
-                ,isConfirmed:true,
-                providor:ProvidorEnum.github
-            }
-        })
+  let user = await dbService.findOne({
+    model: userModel,
+    filter: {
+      email: email.toLowerCase(),
+    },
+  });
+  if (!user) {
+    const [given_name, ...rest] = (name || login)
+      .trim()
+      .split(" ")
+      .filter(Boolean);
+    const family_name = rest.join(" ") || login;
+    if (
+      given_name.length < 2 ||
+      given_name.length > 50 ||
+      family_name.length < 2 ||
+      family_name.length > 50
+    ) {
+      throw new Error("github first and last names must be 2-50 characters", {
+        cause: 400,
+      });
     }
+    [user] = await dbService.create({
+      model: userModel,
+      data: {
+        fName: given_name,
+        lName: family_name,
+        email: email.toLowerCase(),
+        avatar: avatar_url,
+        isConfirmed: true,
+        providor: ProvidorEnum.github,
+      },
+    });
+  }
 
-    if (user.providor !== ProvidorEnum.github) {
-        throw new Error(`login with your original provider = ${user.providor}`,{cause:409})
-    }
-    const token_access =jwt.sign({userId:user._id} ,'y-access',{
-        expiresIn:60 * 5,
-    })
-    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
-        expiresIn:'7d',
-    })
+  if (user.providor !== ProvidorEnum.github) {
+    throw new Error(`login with your original provider = ${user.providor}`, {
+      cause: 409,
+    });
+  }
+  const token_access = jwt.sign({ userId: user._id }, "y-access", {
+    expiresIn: 60 * 5,
+  });
+  const token_refresh = jwt.sign({ userId: user._id }, "y-refresh", {
+    expiresIn: "7d",
+  });
 
-    return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
+  return res
+    .status(200)
+    .json({
+      message: "done",
+      user: { name: user.fullName, email: user.email },
+      token: { token_access, token_refresh },
+    });
 }
 
 //================ signin ==========================
-export async function signIn(req ,res){
-        const {email, password}=req.body
+export async function signIn(req, res) {
+  const { email, password } = req.body;
 
-    const user = await dbService.findOne({
-        model:userModel,
-        filter:{email:email.toLowerCase() }
-    })
-    
-    if(!user){
-        throw new Error('email not exist or you can login on signUp')
-    }
-    if(user.providor !== ProvidorEnum.system){
-        throw new Error(`login with your original provider = ${user.providor}`)
-    }
-    if(user.isConfirmed !== true){
-        throw new Error('account not confirmed')
+  const user = await dbService.findOne({
+    model: userModel,
+    filter: { email: email.toLowerCase() },
+  });
 
-    } 
-    if(!await Compare(password ,user.password)){
-        throw new Error('inValid password')
-    }
-    const tokenId = randomUUID()
-    const token_access =jwt.sign({userId:user._id} ,'y-access',{
-        expiresIn:60 * 5,
-        audience:'https://localhost:4000',
-        issuer:'https://localhost:3000 ',
-        jwtid:tokenId,
-        // notBefore:60,
-        // noTimestamp:true
-    })
-    const token_refresh =jwt.sign({userId:user._id} ,'y-refresh',{
-        expiresIn:'7d',
-        jwtid:tokenId,
-    })
+  if (!user) {
+    throw new Error("email not exist or you can login on signUp");
+  }
+  if (user.providor !== ProvidorEnum.system) {
+    throw new Error(`login with your original provider = ${user.providor}`);
+  }
+  if (user.isConfirmed !== true) {
+    throw new Error("account not confirmed");
+  }
+  if (!(await Compare(password, user.password))) {
+    throw new Error("inValid password");
+  }
+  const tokenId = randomUUID();
+  const token_access = jwt.sign({ userId: user._id }, "y-access", {
+    expiresIn: 60 * 5,
+    audience: "https://localhost:4000",
+    issuer: "https://localhost:3000 ",
+    jwtid: tokenId,
+    // notBefore:60,
+    // noTimestamp:true
+  });
+  const token_refresh = jwt.sign({ userId: user._id }, "y-refresh", {
+    expiresIn: "7d",
+    jwtid: tokenId,
+  });
 
-
-    return res.status(200).json({message:'done',user:{name:user.fullName ,email:user.email },token:{token_access ,token_refresh}})
-
+  return res
+    .status(200)
+    .json({
+      message: "done",
+      user: { name: user.fullName, email: user.email },
+      token: { token_access, token_refresh },
+    });
 }
 //================ refreshToken ==========================
 export async function refreshToken(req, res) {
-  const { authorization } = req.headers
+  const { authorization } = req.headers;
 
   if (!authorization) {
-    return res.status(401).json({ message: 'authorization is required' })
+    return res.status(401).json({ message: "authorization is required" });
   }
 
-  const [scheme, token] = authorization.split(' ')
-  if (scheme !== 'Bearer' || !token) {
-    return res.status(401).json({ message: 'invalid authorization format' })
+  const [scheme, token] = authorization.split(" ");
+  if (scheme !== "Bearer" || !token) {
+    return res.status(401).json({ message: "invalid authorization format" });
   }
 
-    const payload = jwt.verify(token, 'y-refresh')
-        const user = await dbService.findOne({
+  const payload = jwt.verify(token, "y-refresh");
+  const user = await dbService.findOne({
     model: userModel,
     filter: {
-      _id: payload.userId
+      _id: payload.userId,
     },
-  })
-  if(!user){
-    throw new Error('user not found with this refresh token',{cause:404})
+  });
+  if (!user) {
+    throw new Error("user not found with this refresh token", { cause: 404 });
   }
-    const token_access =jwt.sign({userId:user._id} ,'y-access',{
-        expiresIn:60 * 5,
-    })
+  const token_access = jwt.sign({ userId: user._id }, "y-access", {
+    expiresIn: 60 * 5,
+  });
 
-    return res.status(200).json({message:'done',token:{token_access}})
+  return res.status(200).json({ message: "done", token: { token_access } });
 }
 //================ getProfile ==========================
 export async function getProfile(req, res) {
-  const user = req.user
+  const user = req.user;
 
   return res.status(200).json({
-    message: 'done',
-    user: { ...user._doc, phone: user.phone ? Decrypt(user.phone) : user.phone },
-  })
+    message: "done",
+    user: {
+      ...user._doc,
+      phone: user.phone ? Decrypt(user.phone) : user.phone,
+    },
+  });
 }
 //================ shareProfile ==========================
 export async function shareProfile(req, res) {
-    const { id } = req.params
-  const user =await dbService.findById({
+  const { id } = req.params;
+  const user = await dbService.findById({
     model: userModel,
     id,
-    options:{
-        password:0,
-        __v:0,
-        isConfirmed:0,
-    }
-  })
+    options: {
+      password: 0,
+      __v: 0,
+      isConfirmed: 0,
+    },
+  });
   if (!user) {
-    throw new Error('user not found', { cause: 404 })
+    throw new Error("user not found", { cause: 404 });
   }
-  if(user.phone){
-    user.phone = Decrypt(user.phone)
+  if (user.phone) {
+    user.phone = Decrypt(user.phone);
   }
 
   return res.status(200).json({
-    message: 'done',
+    message: "done",
     user,
-  })
+  });
 }
 
 //================ updateProfile ==========================
-export async function updateProfile(req ,res){ 
-    const {fName , lName ,age ,gender,phone}=req.body
-    let updateQuery ={}
-    if(fName !== undefined) updateQuery.fName = fName
-    if(lName !== undefined) updateQuery.lName = lName
-    if(age !== undefined) updateQuery.age = age
-    if(gender !== undefined) updateQuery.gender = gender
-    if(phone !== undefined) updateQuery.phone = Encrypt(phone)
-        const updatedUser = await dbService.findByIdAndUpdate({
-            model:userModel,
-            id:req.user._id,
-            update:updateQuery
-        })
+export async function updateProfile(req, res) {
+  const { fName, lName, age, gender, phone } = req.body;
+  let updateQuery = {};
+  if (fName !== undefined) updateQuery.fName = fName;
+  if (lName !== undefined) updateQuery.lName = lName;
+  if (age !== undefined) updateQuery.age = age;
+  if (gender !== undefined) updateQuery.gender = gender;
+  if (phone !== undefined) updateQuery.phone = Encrypt(phone);
+  const updatedUser = await dbService.findByIdAndUpdate({
+    model: userModel,
+    id: req.user._id,
+    update: updateQuery,
+  });
 
-
-    return res.status(201).json({message:'done',updatedUser})
+  return res.status(201).json({ message: "done", updatedUser });
 }
 //================ updatePassword ==========================
-export async function updatePassword(req ,res){ 
-    const {oldpassword,newpassword}=req.body
-    const user = req.user
-    if(!Compare(oldpassword ,req.user.password)){
-        throw new Error('inValid old password')
-    }
-    user.password = Hash(newpassword)
-    user.changeCredentialsAt = new Date()
-        const updatedUser = await dbService.findByIdAndUpdate({
-            model:userModel,
-            id:req.user._id,
-            update:{password:user.password}
-        })
+export async function updatePassword(req, res) {
+  const { oldpassword, newpassword } = req.body;
+  const user = req.user;
+  if (!Compare(oldpassword, req.user.password)) {
+    throw new Error("inValid old password");
+  }
+  user.password = Hash(newpassword);
+  user.changeCredentialsAt = new Date();
+  const updatedUser = await dbService.findByIdAndUpdate({
+    model: userModel,
+    id: req.user._id,
+    update: { password: user.password },
+  });
 
-
-    return res.status(201).json({message:'done',updatedUser})
+  return res.status(201).json({ message: "done", updatedUser });
 }
 
 //================ logout ==========================
-export async function logout(req ,res){ 
-    const {flag}=req.query
-    const user = req.user
-    if(flag === 'all'){
-    user.changeCredentialsAt = new Date()
-        const updatedUser = await dbService.findByIdAndUpdate({
-            model:userModel,
-            id:req.user._id,
-            update:{changeCredentialsAt:user.changeCredentialsAt}
-        })
-    }else{
-        dbService.create({
-            model:revokeTokenModel,
-            data:{
-                tokenId:req.payload.jti 
-                ,userId:user._id 
-                ,expireAt:new Date(req.payload.exp * 1000)
-            }
-        })
-        console.log('token revoked for this device')
-    }
-    return res.status(201).json({message:'done'})
-
+export async function logout(req, res) {
+  const { flag } = req.query;
+  const user = req.user;
+  if (flag === "all") {
+    user.changeCredentialsAt = new Date();
+    const updatedUser = await dbService.findByIdAndUpdate({
+      model: userModel,
+      id: req.user._id,
+      update: { changeCredentialsAt: user.changeCredentialsAt },
+    });
+  } else {
+    dbService.create({
+      model: revokeTokenModel,
+      data: {
+        tokenId: req.payload.jti,
+        userId: user._id,
+        expireAt: new Date(req.payload.exp * 1000),
+      },
+    });
+    console.log("token revoked for this device");
+  }
+  return res.status(201).json({ message: "done" });
 }

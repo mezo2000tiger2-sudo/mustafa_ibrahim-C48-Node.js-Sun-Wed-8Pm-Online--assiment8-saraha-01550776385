@@ -2,11 +2,14 @@ import express from "express";
 import connectDb from "./DB/connectionDB.js";
 import userRouter from "./DB/modules/user/user.controller.js";
 import cors from 'cors'
+import connectRedis, { redis_client } from "./DB/connection.redis.js";
 const port = 3000;
 const app  = express();
 const bootstrap = async () => {
 
     await connectDb(port, app);
+    await connectRedis();
+
     app.use(express.json());
     app.use(cors({
         origin:'*'
