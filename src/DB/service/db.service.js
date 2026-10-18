@@ -5,6 +5,9 @@ export const create = async ({ model, data, options = {} } = {}) => {
 export const findOne = async ({ model, filter, options = {} } = {}) => {
     return await model.findOne(filter, options)
 }
+export const findOneAndUpdate = async ({ model,update, filter, options = {} } = {}) => {
+    return await model.findOneAndUpdate(filter,update, options)
+}
 
 export const findById = async ({ model, id, options = {} } = {}) => {
     return await model.findById(id, options)

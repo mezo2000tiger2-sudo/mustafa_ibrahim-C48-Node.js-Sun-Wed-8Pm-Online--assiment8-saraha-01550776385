@@ -7,14 +7,95 @@ import { Compare, Hash } from "../../common/security/hash.js";
 import { ProvidorEnum } from "../../common/enum/user.enum.js";
 import { unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import revokeTokenModel from "../../models/revokeToken.model.js";
+import { deleteKey, getValue, setValue } from "../../service/redis.service.js";
+import { generat_otp, sendEmail } from "../../../service/sendEmail.js";
+import { eventEmitter } from "../../common/utils/events.js";
 
 const client = new OAuth2Client();
 
 //================ signUp ==========================
-
 export async function signUp(req, res) {
   const { fName, lName, email, password, age, gender, phone } = req.body;
+
+  const otp =await generat_otp()
+  const otpHash=Hash(otp)
+  await setValue({
+    key:`otp::${email}`,
+    value:otpHash,
+    ttl: 60 * 2
+  })
+  
+
+  
+  eventEmitter.emit('Confirm_email',async()=>{
+    sendEmail({
+      subject:'email confirm',
+      to:'mustafa.ibrahim.buisness@gmail.com',
+      html:`<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirm your email</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      Your saharah confirmation code is ${otp}. It expires in 2 minutes.
+    </div>
+   
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;">
+            <tr>
+              <td style="padding:32px 32px 8px 32px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#111827;">
+                saharah
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px 0 32px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:700;color:#111827;">
+                Confirm your email address
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 32px 0 32px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#4b5563;">
+                Hi ${fName +' '+ lName}, enter this code in saharah to finish creating your account.
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:24px 32px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="background-color:#f3f4f6;border-radius:8px;padding:20px 0;font-family:'Courier New',Courier,monospace;font-size:36px;line-height:40px;font-weight:700;letter-spacing:10px;color:#111827;">
+                      ${otp}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 32px 32px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#6b7280;">
+                This code expires in 2 minutes. If you didn't request it, you can ignore this email and no account will be created.
+              </td>
+            </tr>
+          </table>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+            <tr>
+              <td align="center" style="padding:16px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#9ca3af;">
+                Sent by sahara
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>`,
+  })
+  })
+
+
+
   let user;
   try {
     user = await dbService.create({
@@ -81,11 +162,14 @@ export async function signUpWithGmail(req, res) {
   if (user.provider === ProvidorEnum.system) {
     throw new Error("login with system only");
   }
+  const tokenId = randomUUID();
   const token_access = jwt.sign({ userId: user._id }, "y-access", {
     expiresIn: 60 * 5,
+    jwtid: tokenId,
   });
   const token_refresh = jwt.sign({ userId: user._id }, "y-refresh", {
     expiresIn: "7d",
+    jwtid: tokenId,
   });
 
   return res
@@ -168,11 +252,14 @@ export async function signUpWithGithub(req, res) {
       cause: 409,
     });
   }
+  const tokenId = randomUUID();
   const token_access = jwt.sign({ userId: user._id }, "y-access", {
     expiresIn: 60 * 5,
+    jwtid: tokenId,
   });
   const token_refresh = jwt.sign({ userId: user._id }, "y-refresh", {
     expiresIn: "7d",
+    jwtid: tokenId,
   });
 
   return res
@@ -184,13 +271,42 @@ export async function signUpWithGithub(req, res) {
     });
 }
 
-//================ signin ==========================
+//================ confrimEmail ==========================
+export async function confrimEmail(req, res) {
+  const { email, otp } = req.body;
+  const otpValue =await getValue({key:`otp::${email}`})
+
+  if(!otpValue){
+    throw new Error('otp expired',{cause:400})
+  }
+  if (!Compare(otp, otpValue)) {
+  throw new Error('otp invalid', { cause: 400 });
+}
+  const user = await dbService.findOneAndUpdate({
+    model:userModel,
+    filter:{email,isConfirmed:false},
+    update:{isConfirmed:true}
+  })
+
+  deleteKey({key:`otp::${email}`})
+
+
+  if(!user){
+    throw new Error('user not exist',{cause:400})
+  }
+  return res
+    .status(200)
+    .json({
+      message: "done",
+    });
+}
+
 export async function signIn(req, res) {
   const { email, password } = req.body;
 
   const user = await dbService.findOne({
     model: userModel,
-    filter: { email: email.toLowerCase() },
+    filter: { email: email.toLowerCase(),isConfirmed:true,providor:ProvidorEnum.system },
   });
 
   if (!user) {
@@ -332,23 +448,25 @@ export async function updatePassword(req, res) {
 export async function logout(req, res) {
   const { flag } = req.query;
   const user = req.user;
-  if (flag === "all") {
+  if (flag && flag === "all") {
     user.changeCredentialsAt = new Date();
     const updatedUser = await dbService.findByIdAndUpdate({
       model: userModel,
       id: req.user._id,
       update: { changeCredentialsAt: user.changeCredentialsAt },
     });
+    
+    await deleteKey(await keys(`revoke_token::${user._id}`))
+
   } else {
-    dbService.create({
-      model: revokeTokenModel,
-      data: {
-        tokenId: req.payload.jti,
-        userId: user._id,
-        expireAt: new Date(req.payload.exp * 1000),
-      },
-    });
-    console.log("token revoked for this device");
+    console.log(req.payload.exp  - Math.floor((Date.now()/1000)))
+
+    await setValue({
+      key:`revoke_token::${user._id}::${req.payload.jti}`,
+      value:`${req.payload.jti}`,
+      ttl:req.payload.exp  - Math.floor((Date.now()/1000))
+    })
+
   }
   return res.status(201).json({ message: "done" });
 }

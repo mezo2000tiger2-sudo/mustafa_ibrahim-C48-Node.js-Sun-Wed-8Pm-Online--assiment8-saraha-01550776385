@@ -7,8 +7,11 @@ const port = 3000;
 const app  = express();
 const bootstrap = async () => {
 
-    await connectDb(port, app);
-    await connectRedis();
+    const results = await Promise.allSettled([
+        connectDb(port, app),
+        connectRedis(),
+    ]);
+    
 
     app.use(express.json());
     app.use(cors({

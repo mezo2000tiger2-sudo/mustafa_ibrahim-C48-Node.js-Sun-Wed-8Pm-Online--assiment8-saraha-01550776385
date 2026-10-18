@@ -61,3 +61,10 @@ export const shareProfileSchema ={
         id: generalRules.id.required()
     }).required()
 }
+
+export const confrimEmailSchema ={
+     body: joi.object({
+        email: generalRules.email.required(),
+        otp:joi.string().pattern(/^[0-9]{6}$/).required()
+    }).required()
+}

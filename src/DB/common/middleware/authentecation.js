@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import userModel from "../../models/user.model.js";
 import * as dbService from "../../service/db.service.js";
-import revokeTokenModel from "../../models/revokeToken.model.js";
+import { getTTL } from "../../service/redis.service.js";
 
 export async function authentication(req, res, next) {
   const { authorization } = req.headers;
@@ -29,14 +29,13 @@ export async function authentication(req, res, next) {
   if (user.changeCredentialsAt?.getTime() > payload.iat * 1000) {
     throw new Error("token has expired", { cause: 401 });
   }
-  if (
-    await dbService.findOne({
-      model: revokeTokenModel,
-      filter: { tokenId: payload.jti },
-    })
-  ) {
-    throw new Error("token expired from this device", { cause: 401 });
-  }
+  const ttl = await getTTL({
+  key: `revoke_token::${user._id}::${payload.jti}`,
+});
+
+if (ttl > 0) {
+  throw new Error("invalid revoked token, login again", { cause: 401 });
+}
   req.user = user;
   req.payload = payload;
   next();
