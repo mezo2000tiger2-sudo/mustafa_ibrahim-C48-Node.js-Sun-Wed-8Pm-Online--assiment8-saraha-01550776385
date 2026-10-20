@@ -18,7 +18,7 @@ export const getValue = async ({ key }) => decode(await redis_client.get(key))
 
 export const getTTL = async ({ key }) => {
   const seconds = await redis_client.ttl(key)
-  return seconds === -2 ? null : seconds
+  return seconds
 }
 
 export const expire = async ({ key,ttl }) => {

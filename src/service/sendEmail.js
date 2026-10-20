@@ -19,6 +19,8 @@ export const sendEmail=async({to ,subject ,html='',attachments ,text=''}={})=>{
     console.log({info})
     return info.accepted.length > 0
 }
+
+
 export const generat_otp=async ()=>{
     return  randomInt(100000,1000000).toString()
 }
