@@ -25,6 +25,7 @@ export async function authentication(req, res, next) {
   if (!user) {
     throw new Error("user not found", { cause: 404 });
   }
+  if(!user?.isConfirmed) throw new Error('you need to be confirmed')
 
   if (user.changeCredentialsAt?.getTime() > payload.iat * 1000) {
     throw new Error("token has expired", { cause: 401 });

@@ -7,9 +7,10 @@ import { Compare, Hash } from "../../common/security/hash.js";
 import { ProvidorEnum } from "../../common/enum/user.enum.js";
 import { unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { deleteKey, getTTL, getValue, incr, setValue } from "../../service/redis.service.js";
+import { deleteKey, getTTL, getValue, getValues, incr, setValue, setValues } from "../../service/redis.service.js";
 import { generat_otp, sendEmail } from "../../../service/sendEmail.js";
 import { eventEmitter } from "../../common/utils/events.js";
+import { emailTemplate } from "../../common/utils/email.template.js";
 
 const client = new OAuth2Client();
 
@@ -19,17 +20,18 @@ export async function signUp(req, res) {
 
   const otp =await generat_otp()
   const otpHash=Hash(otp)
-  await setValue({
-    key:`otp::${email}`,
-    value:otpHash,
-    ttl: 60 * 2
-  })
-
-  await setValue({
-    key:`otp::max::${email}`,
-    value:1,
-    ttl: 60 * 5
-  })
+  await setValues([
+    {
+      key:`otp::${email}`,
+      value:otpHash,
+      ttl: 60 * 2
+    },
+    {
+      key:`otp::max::${email}`,
+      value:1,
+      ttl: 60 * 5
+    }
+  ])
 
   
 
@@ -38,66 +40,7 @@ export async function signUp(req, res) {
     sendEmail({
       subject:'email confirm',
       to: email,
-      html:`<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Confirm your email</title>
-  </head>
-  <body style="margin:0;padding:0;background-color:#f3f4f6;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-      Your saharah confirmation code is ${otp}. It expires in 2 minutes.
-    </div>
-   
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
-      <tr>
-        <td align="center" style="padding:32px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;">
-            <tr>
-              <td style="padding:32px 32px 8px 32px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#111827;">
-                saharah
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:16px 32px 0 32px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:700;color:#111827;">
-                Confirm your email address
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:12px 32px 0 32px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#4b5563;">
-                Hi ${fName +' '+ lName}, enter this code in saharah to finish creating your account.
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:24px 32px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-                  <tr>
-                    <td align="center" style="background-color:#f3f4f6;border-radius:8px;padding:20px 0;font-family:'Courier New',Courier,monospace;font-size:36px;line-height:40px;font-weight:700;letter-spacing:10px;color:#111827;">
-                      ${otp}
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:0 32px 32px 32px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#6b7280;">
-                This code expires in 2 minutes. If you didn't request it, you can ignore this email and no account will be created.
-              </td>
-            </tr>
-          </table>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
-            <tr>
-              <td align="center" style="padding:16px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#9ca3af;">
-                Sent by sahara
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>`,
+      html:emailTemplate({otp}),
   })
   })
 
@@ -292,11 +235,13 @@ export async function confrimEmail(req, res) {
   }
   const user = await dbService.findOneAndUpdate({
     model:userModel,
-    filter:{email,isConfirmed:false},
+    filter:{email,isConfirmed:{$exists:false}},
     update:{isConfirmed:true}
   })
 
   deleteKey(`otp::${email}`)
+  deleteKey(`otp::max::${email}`)
+  deleteKey(`otp::block::${email}`)
 
 
   if(!user){
@@ -308,13 +253,24 @@ export async function confrimEmail(req, res) {
 //================ resendOtp ==========================
 export async function resendOtp(req, res) {
   const { email } = req.body;
-  const isBlocked_ttl = getTTL({key:`otp::block::${email}`})
-  if(isBlocked_ttl > 0) throw new Error(`you are blocked , you can retry after ${isBlocked}`)
+  const [isBlocked_ttl, otpTTl, otpMax] = await getValues([
+    { key:`otp::block::${email}`, type:'ttl' },
+    { key:`otp::${email}`, type:'ttl' },
+    { key:`otp::max::${email}` }
+  ])
+  if(isBlocked_ttl > 0){
+    throw new Error(`you are blocked , you can retry after ${isBlocked_ttl}`)
+  }
 
-  const otpTTl =await getTTL({key:`otp::${email}`})
   if(otpTTl > 0) throw new Error(`you can send otp after ${otpTTl}`)
 
-  const otpMax =await getValue({key:`otp::max::${email}`})
+  if(otpMax === null){
+    await setValue({
+      key:`otp::max::${email}`,
+      value:0,
+      ttl:60 * 5
+    })
+  }
   if(otpMax >=3) {
     await setValue({
       key:`otp::block::${email}`,
@@ -329,7 +285,7 @@ export async function resendOtp(req, res) {
     model:userModel,
     filter:{
       email,
-      isConfirmed:false
+      isConfirmed:{$exists:false}
     }
   })
   if(!user)throw new Error ('user not exist or already confirmed')
@@ -345,66 +301,7 @@ export async function resendOtp(req, res) {
     sendEmail({
       subject:'email confirm',
       to: email,
-      html:`<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Confirm your email</title>
-  </head>
-  <body style="margin:0;padding:0;background-color:#f3f4f6;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-      Your saharah confirmation code is ${otp}. It expires in 2 minutes.
-    </div>
-   
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
-      <tr>
-        <td align="center" style="padding:32px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;">
-            <tr>
-              <td style="padding:32px 32px 8px 32px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#111827;">
-                saharah
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:16px 32px 0 32px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:700;color:#111827;">
-                Confirm your email address
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:12px 32px 0 32px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#4b5563;">
-                Hi ${fName +' '+ lName}, enter this code in saharah to finish creating your account.
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:24px 32px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-                  <tr>
-                    <td align="center" style="background-color:#f3f4f6;border-radius:8px;padding:20px 0;font-family:'Courier New',Courier,monospace;font-size:36px;line-height:40px;font-weight:700;letter-spacing:10px;color:#111827;">
-                      ${otp}
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:0 32px 32px 32px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#6b7280;">
-                This code expires in 2 minutes. If you didn't request it, you can ignore this email and no account will be created.
-              </td>
-            </tr>
-          </table>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
-            <tr>
-              <td align="center" style="padding:16px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#9ca3af;">
-                Sent by sahara
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>`,
+      html:emailTemplate({}),
   })
   })
   await incr(`otp::max::${email}`)
@@ -419,7 +316,7 @@ export async function signIn(req, res) {
 
   const user = await dbService.findOne({
     model: userModel,
-    filter: { email: email.toLowerCase(),isConfirmed:true,providor:ProvidorEnum.system },
+    filter: { email: email.toLowerCase(),isConfirmed:{$exists:true},providor:ProvidorEnum.system },
   });
 
   if (!user) {
@@ -428,10 +325,10 @@ export async function signIn(req, res) {
   if (user.providor !== ProvidorEnum.system) {
     throw new Error(`login with your original provider = ${user.providor}`);
   }
-  if (user.isConfirmed !== true) {
+  if (!user.isConfirmed) {
     throw new Error("account not confirmed");
   }
-  if (!(await Compare(password, user.password))) {
+  if (! Compare(password, user.password)) {
     throw new Error("inValid password");
   }
   const tokenId = randomUUID();

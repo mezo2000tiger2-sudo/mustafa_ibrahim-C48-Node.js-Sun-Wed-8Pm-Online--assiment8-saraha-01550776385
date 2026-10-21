@@ -8,6 +8,15 @@ export const setValue = async ({ key, value, ttl }) => {
   return redis_client.set(key, encode(value), options)
 }
 
+export const setValues = async (entries) => {
+  const transaction = redis_client.multi()
+  for (const { key, value, ttl } of entries) {
+    const options = ttl ? { EX: ttl } : undefined
+    transaction.set(key, encode(value), options)
+  }
+  return transaction.exec()
+}
+
 export const updateValue = async ({ key, value, ttl }) => {
   const options = ttl ? { XX: true, EX: ttl } : { XX: true, KEEPTTL: true }
   const result = await redis_client.set(key, encode(value), options)
@@ -15,6 +24,23 @@ export const updateValue = async ({ key, value, ttl }) => {
 }
 
 export const getValue = async ({ key }) => decode(await redis_client.get(key))
+
+export const getValues = async (entries) => {
+  const transaction = redis_client.multi()
+  for (const { key, type = 'value' } of entries) {
+    if (type === 'ttl') {
+      transaction.ttl(key)
+    } else if (type === 'value') {
+      transaction.get(key)
+    } else {
+      throw new TypeError(`Unsupported Redis read type: ${type}`)
+    }
+  }
+  const results = await transaction.exec()
+  return results.map((result, index) => (
+    entries[index].type === 'ttl' ? result : decode(result)
+  ))
+}
 
 export const getTTL = async ({ key }) => {
   const seconds = await redis_client.ttl(key)

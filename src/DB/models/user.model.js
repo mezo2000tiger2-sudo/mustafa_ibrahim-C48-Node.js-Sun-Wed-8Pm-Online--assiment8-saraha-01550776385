@@ -61,10 +61,7 @@ const userSchema =new mongoose.Schema({
         enum:Object.values(ProvidorEnum),
         default:ProvidorEnum.system
     },
-    isConfirmed:{
-        type:Boolean,
-        default:false
-    },
+    isConfirmed:Boolean,
     changeCredentialsAt:Date
 },{
     timestamps: true,
