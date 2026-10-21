@@ -11,6 +11,7 @@ import { deleteKey, getTTL, getValue, getValues, incr, setValue, setValues } fro
 import { generat_otp, sendEmail } from "../../../service/sendEmail.js";
 import { eventEmitter } from "../../common/utils/events.js";
 import { emailTemplate } from "../../common/utils/email.template.js";
+import { SendEmailOtp } from "./user.helper.js";
 
 const client = new OAuth2Client();
 
@@ -18,7 +19,7 @@ const client = new OAuth2Client();
 export async function signUp(req, res) {
   const { fName, lName, email, password, age, gender, phone } = req.body;
 
-  const otp =await generat_otp()
+  const otp = generat_otp()
   const otpHash=Hash(otp)
   await setValues([
     {
@@ -55,7 +56,7 @@ export async function signUp(req, res) {
         fName,
         lName,
         email,
-        password: await Hash(password),
+        password: Hash(password),
         age,
         gender,
         phone: phone ? Encrypt(phone) : undefined,
@@ -253,60 +254,9 @@ export async function confrimEmail(req, res) {
 //================ resendOtp ==========================
 export async function resendOtp(req, res) {
   const { email } = req.body;
-  const [isBlocked_ttl, otpTTl, otpMax] = await getValues([
-    { key:`otp::block::${email}`, type:'ttl' },
-    { key:`otp::${email}`, type:'ttl' },
-    { key:`otp::max::${email}` }
-  ])
-  if(isBlocked_ttl > 0){
-    throw new Error(`you are blocked , you can retry after ${isBlocked_ttl}`)
-  }
+  await SendEmailOtp({email,isConfirmed:false , subject:'confirm email'})
 
-  if(otpTTl > 0) throw new Error(`you can send otp after ${otpTTl}`)
-
-  if(otpMax === null){
-    await setValue({
-      key:`otp::max::${email}`,
-      value:0,
-      ttl:60 * 5
-    })
-  }
-  if(otpMax >=3) {
-    await setValue({
-      key:`otp::block::${email}`,
-      value:'1',
-      ttl:60 *10
-    })
-    throw new Error('you have reached your maximum number of tries')
-  }
-
-  
-  const user = dbService.findOne({
-    model:userModel,
-    filter:{
-      email,
-      isConfirmed:{$exists:false}
-    }
-  })
-  if(!user)throw new Error ('user not exist or already confirmed')
-    const otp =await generat_otp()
-  const otpHash=Hash(otp)
-  await setValue({
-    key:`otp::${email}`,
-    value:otpHash,
-    ttl: 60 * 2
-  })
-  
-  eventEmitter.emit('Confirm_email',async()=>{
-    sendEmail({
-      subject:'email confirm',
-      to: email,
-      html:emailTemplate({}),
-  })
-  })
-  await incr(`otp::max::${email}`)
-
-  return res.status(200).json({message:'Done',user})
+  return res.status(200).json({message:'Done'})
 
 }
 
@@ -479,4 +429,34 @@ export async function logout(req, res) {
 
   }
   return res.status(201).json({ message: "done" });
+}
+
+//================ forgetPassword ==========================
+export async function forgetPassword(req, res) {
+  const { email } = req.body;
+  await SendEmailOtp({email ,isConfirmed:true,subject:'forget password'})
+
+  return res.status(200).json({message:'Done'})
+}
+//================ resetPassword ==========================
+export async function resetPassword(req, res) {
+  const { email,otp,password } = req.body;
+  const otpValue = await getValue({key:`otp::${email}`})
+  if(!otpValue)throw new Error(`token expire`)
+    if (!Compare(otp, otpValue)) {
+  throw new Error('otp invalid', { cause: 400 });
+  }
+  const user =await dbService.findOneAndUpdate({
+    model:userModel,
+    filter:{
+      email,
+      isConfirmed:{$exists:true}
+    },
+    update:{
+      password:Hash(password)
+    }
+  })
+  if(!user) throw new Error('user not exist or not confirmed')
+    await deleteKey(`otp::${email}`)
+  return res.status(200).json({message:'Done'})
 }
