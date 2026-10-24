@@ -21,10 +21,11 @@ export async function SendEmailOtp({email ,isConfirmed , subject}) {
       }
     })
   ])
-  if(isBlocked_ttl > 0){
-    throw new Error(`you are blocked , you can retry after ${isBlocked_ttl}`)
+  if(isBlocked_ttl === -1) throw new Error('you are blocked')
+  if(isBlocked_ttl >= 0){
+      throw new Error(`you are blocked , you can retry after ${isBlocked_ttl}`)
   }
-
+   if(otpTTl === -1) throw new Error('an active otp has no expiration')
   if(otpTTl > 0) throw new Error(`you can send otp after ${otpTTl}`)
 
   if(otpMax >=3) {
@@ -43,7 +44,7 @@ export async function SendEmailOtp({email ,isConfirmed , subject}) {
     await setValue({
       key:`otp::max::${email}`,
       value:0,
-      ttl:60 * 5
+      ttl:60 * 10
     })
   }
   await setValue({

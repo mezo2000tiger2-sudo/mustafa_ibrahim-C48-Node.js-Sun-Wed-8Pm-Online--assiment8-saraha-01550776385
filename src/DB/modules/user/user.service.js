@@ -30,7 +30,7 @@ export async function signUp(req, res) {
     {
       key:`otp::max::${email}`,
       value:1,
-      ttl: 60 * 5
+      ttl: 60 * 10
     }
   ])
 
