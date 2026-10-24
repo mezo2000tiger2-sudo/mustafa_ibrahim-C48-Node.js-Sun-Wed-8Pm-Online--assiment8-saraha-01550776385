@@ -6,10 +6,11 @@ import { RoleEnum } from "../../common/enum/user.enum.js";
 import { validation } from "../../common/middleware/validation.js";
 import { confrimEmailSchema, forgetPasswordSchema, refreshTokenSchema, resendOtpSchema, resetPasswordSchema, shareProfileSchema, signinSchema, signUpSchema, updatePasswordSchema, updateProfileSchema } from "./user.validation.js";
 import { multerLocal } from "../../common/middleware/multer.js";
+import { Multer_Enum } from "../../common/enum/multer.enum.js";
 
 const userRouter = Router();
 
-userRouter.post('/signup',multerLocal({customStorage: 'users', customTypes: ['image/png', 'image/jpg', 'image/jpeg']}).single('avatar'),validation(signUpSchema),signUp)
+userRouter.post('/signup',multerLocal({customStorage: 'users', customTypes: Multer_Enum.image}).single('avatar'),validation(signUpSchema),signUp)
 userRouter.post('/signup/gmail',signUpWithGmail)
 userRouter.post('/signup/github',signUpWithGithub)
 userRouter.post('/confrimEmail',validation(confrimEmailSchema),confrimEmail)

@@ -438,6 +438,7 @@ export async function forgetPassword(req, res) {
 
   return res.status(200).json({message:'Done'})
 }
+
 //================ resetPassword ==========================
 export async function resetPassword(req, res) {
   const { email,otp,password } = req.body;
@@ -453,7 +454,8 @@ export async function resetPassword(req, res) {
       isConfirmed:{$exists:true}
     },
     update:{
-      password:Hash(password)
+      password:Hash(password),
+      changeCredentialsAt:new Date()
     }
   })
   if(!user) throw new Error('user not exist or not confirmed')

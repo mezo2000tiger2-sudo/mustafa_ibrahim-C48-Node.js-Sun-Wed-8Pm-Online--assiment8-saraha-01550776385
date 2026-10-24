@@ -1,7 +1,7 @@
-import { getValues, setValue, setValueAndIncrement } from "../../service/redis.service.js";
+import { getValues, incr, setValue } from "../../service/redis.service.js";
 import * as dbService from "../../service/db.service.js";
 import { generat_otp, sendEmail } from "../../../service/sendEmail.js";
-import { HashAsync } from "../../common/security/hash.js";
+import { Hash } from "../../common/security/hash.js";
 import { eventEmitter } from "../../common/utils/events.js";
 import userModel from "../../models/user.model.js";
 import { emailTemplate } from "../../common/utils/email.template.js";
@@ -38,14 +38,20 @@ export async function SendEmailOtp({email ,isConfirmed , subject}) {
 
   if(!user)throw new Error ('user not exist or already confirmed')
   const otp = generat_otp()
-  const otpHash = await HashAsync(otp)
-  await setValueAndIncrement({
+  const otpHash =Hash(otp)
+  if(otpMax === null){
+    await setValue({
+      key:`otp::max::${email}`,
+      value:0,
+      ttl:60 * 5
+    })
+  }
+  await setValue({
     key:`otp::${email}`,
     value:otpHash,
-    ttl: 60 * 2,
-    counterKey:`otp::max::${email}`,
-    counterTtl: 60 * 5
+    ttl: 60 * 2
   })
+  await incr(`otp::max::${email}`)
   
   eventEmitter.emit('Confirm_email',()=>{
     return sendEmail({

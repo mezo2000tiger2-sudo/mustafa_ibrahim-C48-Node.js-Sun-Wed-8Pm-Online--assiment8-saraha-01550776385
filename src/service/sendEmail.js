@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import {randomInt, randomUUID}from 'node:crypto'
+import {randomInt}from 'node:crypto'
 export const sendEmail=async({to ,subject ,html='',attachments ,text=''}={})=>{
     const transporter = nodemailer.createTransport({
         service:'gmail',
@@ -21,6 +21,6 @@ export const sendEmail=async({to ,subject ,html='',attachments ,text=''}={})=>{
 }
 
 
-export const generat_otp=async ()=>{
+export const generat_otp= ()=>{
     return  randomInt(100000,1000000).toString()
 }
