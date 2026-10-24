@@ -14,6 +14,7 @@ const bootstrap = async () => {
         connectRedis(),
     ]);
     
+    app.set('strict routing', true)
 
     app.use(express.json());
     app.use(cors({
