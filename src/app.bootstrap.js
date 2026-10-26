@@ -1,11 +1,13 @@
+import { PORT } from "../config/config.service.js";
+
 import express from "express";
 import connectDb from "./DB/connectionDB.js";
 import userRouter from "./DB/modules/user/user.controller.js";
 import cors from 'cors'
-import connectRedis, { redis_client } from "./DB/connection.redis.js";
+import connectRedis from "./DB/connection.redis.js";
 import messagesRouter from "./DB/modules/messages/messages.controller.js";
 import {unlink} from 'node:fs/promises'
-const port = 3000;
+const port = PORT;
 const app  = express();
 const bootstrap = async () => {
 

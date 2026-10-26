@@ -1,0 +1,5 @@
+config/*
+uploads
+node_modules
+!config/config.service.js
+!config/.env.example

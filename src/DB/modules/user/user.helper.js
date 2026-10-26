@@ -23,7 +23,9 @@ export async function SendEmailOtp({email ,isConfirmed , subject}) {
   ])
   if(isBlocked_ttl === -1) throw new Error('you are blocked')
   if(isBlocked_ttl >= 0){
-      throw new Error(`you are blocked , you can retry after ${isBlocked_ttl}`)
+    const error = new Error(`you are blocked , you can retry after ${isBlocked_ttl}`);
+    error.details = `${isBlocked_ttl}`;
+    throw error;
   }
    if(otpTTl === -1) throw new Error('an active otp has no expiration')
   if(otpTTl > 0) throw new Error(`you can send otp after ${otpTTl}`)

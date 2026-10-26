@@ -1,5 +1,4 @@
-
-
+import { DB_URI } from "../../config/config.service.js";
 
 import mongoose from "mongoose";
 // import dns from "dns";
@@ -8,9 +7,9 @@ import mongoose from "mongoose";
 
 const connectDb = async (port , app) => {
     try {
-        await mongoose.connect("mongodb://127.0.0.1:27017/saharah", {
+        await mongoose.connect(DB_URI, {
         });
-        // await mongoose.connect("mongodb+srv://mustafa:mezo362012@cluster0.38xmihw.mongodb.net/saharah", {
+        // await mongoose.connect(process.env.DB_URI, {
         // });
             app.listen(port, () => {
             console.log(`Server is running on port ${port}`);

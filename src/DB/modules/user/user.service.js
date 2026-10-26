@@ -111,8 +111,8 @@ export async function signUpWithGmail(req, res) {
     });
   }
 
-  if (user.provider === ProvidorEnum.system) {
-    throw new Error("login with system only");
+  if (user.providor === ProvidorEnum.google) {
+    throw new Error(`login with your original provider = ${user.providor}`);
   }
   const tokenId = randomUUID();
   const token_access = jwt.sign({ userId: user._id }, "y-access", {
@@ -270,7 +270,7 @@ export async function signIn(req, res) {
   });
 
   if (!user) {
-    throw new Error("email not exist or you can login on signUp");
+    throw new Error("email not exist");
   }
   if (user.providor !== ProvidorEnum.system) {
     throw new Error(`login with your original provider = ${user.providor}`);
