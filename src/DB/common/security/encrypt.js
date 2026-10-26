@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
+import { ENCRYPT_KEY, IV_LENGTH } from '../../../../config/config.service.js';
 // 🔑 Use 32 bytes (256 bits) for AES-256
-const ENCRYPTION_KEY = Buffer.from('a8dc9e7de50004da62a9765b2c149be91b7dad4a62bc84563dfbaefb067319e0', 'hex')
-const IV_LENGTH = 16; // For AES, the IV is always 16 bytes
+const ENCRYPTION_KEY = Buffer.from(ENCRYPT_KEY, 'hex')
 
 export function Encrypt(plainText) {
     const iv = crypto.randomBytes(IV_LENGTH);

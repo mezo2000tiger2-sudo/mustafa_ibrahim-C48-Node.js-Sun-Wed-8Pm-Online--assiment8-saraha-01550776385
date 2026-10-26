@@ -1,4 +1,4 @@
-import { PORT } from "../config/config.service.js";
+import { ALLOW_ORIGINS, PORT } from "../config/config.service.js";
 
 import express from "express";
 import connectDb from "./DB/connectionDB.js";
@@ -27,6 +27,7 @@ const limiter = rateLimit({
     // skipSuccessfulRequests:true
 })
 
+
 const bootstrap = async () => {
 
     const results = await Promise.allSettled([
@@ -39,9 +40,15 @@ const bootstrap = async () => {
     app.use(limiter)
     app.use(helmet())
     app.use(express.json());
-    
+
     app.use(cors({
-        origin:'*'
+        origin:function (origin, callback) {
+            if([...ALLOW_ORIGINS,undefined ].includes(origin)){
+                callback(null,true)
+            }else{
+                callback(new Error('now allowed by origin'))
+            }
+        }
     }));
     
     app.get('/',(req,res)=>{

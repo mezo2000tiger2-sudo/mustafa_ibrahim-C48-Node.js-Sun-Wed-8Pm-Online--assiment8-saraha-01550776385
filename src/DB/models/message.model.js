@@ -9,10 +9,14 @@ const messageSchema =new mongoose.Schema({
         trim:true
     },
     attachments:[String],
-    userId:{
+    recevierId:{
         type:Types.ObjectId,
         ref:'User',
         required:true
+    },
+    senderId:{
+        type:Types.ObjectId,
+        ref:'User',
     }
 },{
     timestamps: true,

@@ -7,13 +7,14 @@ export const findOne = async ({ model, filter, options = {} } = {}) => {
 }
 
 export const find = async ({ model, filter = {}, options = {} } = {}) => {
-    const { limit, skip, sort, populate, lean } = options
+    const { limit, skip, sort, populate, lean, select } = options
     const query = model.find(filter)
 
     if (limit) query.limit(limit)
     if (skip) query.skip(skip)
     if (sort) query.sort(sort)
     if (populate) query.populate(populate)
+    if (select) query.select(select)
     if (lean) query.lean()
 
     return query.exec()
