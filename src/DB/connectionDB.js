@@ -9,8 +9,7 @@ const connectDb = async (port , app) => {
     try {
         await mongoose.connect(DB_URI, {
         });
-        // await mongoose.connect(process.env.DB_URI, {
-        // });
+
             app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
         });

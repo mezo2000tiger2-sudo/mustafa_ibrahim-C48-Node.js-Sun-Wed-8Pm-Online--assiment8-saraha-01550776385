@@ -7,8 +7,26 @@ import cors from 'cors'
 import connectRedis from "./DB/connection.redis.js";
 import messagesRouter from "./DB/modules/messages/messages.controller.js";
 import {unlink} from 'node:fs/promises'
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+
+
 const port = PORT;
 const app  = express();
+
+const limiter = rateLimit({
+    windowMs:60 *1000,
+    limit:5,
+    message:{
+        message:'error',
+        error:'to many requests'
+    },
+    standardHeaders:true,
+    legacyHeaders:false,
+    skip: (req) => req.path === '/message' || req.path.startsWith('/message/'),
+    // skipSuccessfulRequests:true
+})
+
 const bootstrap = async () => {
 
     const results = await Promise.allSettled([
@@ -18,7 +36,10 @@ const bootstrap = async () => {
     
     app.set('strict routing', true)
 
+    app.use(limiter)
+    app.use(helmet())
     app.use(express.json());
+    
     app.use(cors({
         origin:'*'
     }));
