@@ -35,7 +35,8 @@ export async function createMessage(req,res){
 
 export async function getMessages(req,res){
   const filter = {
-      recevierId:req.user._id
+      recevierId:req.user._id,
+      conversationId:null
     }
 
 
@@ -62,7 +63,8 @@ export async function getMessages(req,res){
 
 export async function getSentMessages(req,res){
   const filter ={
-      senderId:req.user._id
+      senderId:req.user._id,
+      conversationId:null
     }
 
   const page = Number(req.query.page ?? 1);
