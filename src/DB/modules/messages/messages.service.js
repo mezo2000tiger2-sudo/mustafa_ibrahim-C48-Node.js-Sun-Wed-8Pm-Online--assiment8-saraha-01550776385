@@ -2,6 +2,7 @@ import messageModel from "../../models/message.model.js";
 import userModel from "../../models/user.model.js";
 import * as dbService from "../../service/db.service.js";
 import { isObjectIdOrHexString } from "mongoose";
+import { success_response } from "../../common/utils/successResponse.js";
  
 //================ createMessage ==========================
 
@@ -28,7 +29,7 @@ export async function createMessage(req,res){
       ...(req.user ? { senderId: req.user._id } : {})
     }
   })
-  return res.status(200).json({message:'done',message})
+  return success_response({ res, data: { message } });
 }
 //================ getMessages ==========================
 
@@ -55,7 +56,7 @@ export async function getMessages(req,res){
     filter,
     options:{select:'-senderId',limit:size,skip,sort:{createdAt:-1,_id:-1}}
   })
-    return res.status(200).json({message:'done',data:{messages,page ,pages ,size}})
+    return success_response({ res, data: { data: { messages, page, pages, size } } });
 }
 //================ getSentMessages ==========================
 
@@ -80,7 +81,7 @@ export async function getSentMessages(req,res){
     filter,
     options:{select:'-senderId',limit:size,skip,sort:{createdAt:-1,_id:-1}}
   })
-  return res.status(200).json({message:'done',data:{messages,page ,pages ,size}})
+  return success_response({ res, data: { data: { messages, page, pages, size } } });
 }
 
 //================ getMessageById ==========================
@@ -103,5 +104,5 @@ export async function getMessageById(req,res){
   if (!message) {
     throw new Error("message not found", { cause: 404 });
   }
-    return res.status(200).json({message:'done',message})
+    return success_response({ res, data: { message } });
 }

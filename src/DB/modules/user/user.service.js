@@ -12,6 +12,7 @@ import { generat_otp, sendEmail } from "../../../service/sendEmail.js";
 import { eventEmitter } from "../../common/utils/events.js";
 import { emailTemplate } from "../../common/utils/email.template.js";
 import { SendEmailOtp } from "./user.helper.js";
+import { success_response } from "../../common/utils/successResponse.js";
 
 const client = new OAuth2Client();
 
@@ -77,7 +78,7 @@ export async function signUp(req, res) {
     throw error;
   }
 
-  return res.status(201).json({ message: "done", user });
+  return success_response({ res, statusCode: 201, data: { user } });
 }
 
 //================ signUpWithGmail ==========================
@@ -123,14 +124,14 @@ export async function signUpWithGmail(req, res) {
     expiresIn: "7d",
     jwtid: tokenId,
   });
-
-  return res
-    .status(200)
-    .json({
-      message: "done",
+  
+  return success_response({
+    res,
+    data: {
       user: { name: user.fullName, email: user.email },
       token: { token_access, token_refresh },
-    });
+    },
+  });
   console.log(playload);
 }
 
@@ -213,14 +214,13 @@ export async function signUpWithGithub(req, res) {
     expiresIn: "7d",
     jwtid: tokenId,
   });
-
-  return res
-    .status(200)
-    .json({
-      message: "done",
+  return success_response({
+    res,
+    data: {
       user: { name: user.fullName, email: user.email },
       token: { token_access, token_refresh },
-    });
+    },
+  });
 }
 
 //================ confrimEmail ==========================
@@ -248,7 +248,7 @@ export async function confrimEmail(req, res) {
   if(!user){
     throw new Error('user not exist',{cause:400})
   }
-  return res.status(200).json({message: "done",});
+  return success_response({ res });
 }
 
 //================ resendOtp ==========================
@@ -256,7 +256,7 @@ export async function resendOtp(req, res) {
   const { email } = req.body;
   await SendEmailOtp({email,isConfirmed:false , subject:'confirm email'})
 
-  return res.status(200).json({message:'Done'})
+  return success_response({ res, message: "Done" });
 
 }
 
@@ -294,15 +294,15 @@ export async function signIn(req, res) {
     expiresIn: "7d",
     jwtid: tokenId,
   });
-
-  return res
-    .status(200)
-    .json({
-      message: "done",
+  return success_response({
+    res,
+    data: {
       user: { name: user.fullName, email: user.email },
       token: { token_access, token_refresh },
-    });
+    },
+  });
 }
+
 //================ refreshToken ==========================
 export async function refreshToken(req, res) {
   const { authorization } = req.headers;
@@ -329,18 +329,20 @@ export async function refreshToken(req, res) {
   const token_access = jwt.sign({ userId: user._id }, "y-access", {
     expiresIn: 60 * 5,
   });
-
-  return res.status(200).json({ message: "done", token: { token_access } });
+  
+  return success_response({ res, data: { token: { token_access } } });
 }
 //================ getProfile ==========================
 export async function getProfile(req, res) {
   const user = req.user;
 
-  return res.status(200).json({
-    message: "done",
-    user: {
-      ...user._doc,
-      phone: user.phone ? Decrypt(user.phone) : user.phone,
+  return success_response({
+    res,
+    data: {
+      user: {
+        ...user._doc,
+        phone: user.phone ? Decrypt(user.phone) : user.phone,
+      },
     },
   });
 }
@@ -363,10 +365,7 @@ export async function shareProfile(req, res) {
     user.phone = Decrypt(user.phone);
   }
 
-  return res.status(200).json({
-    message: "done",
-    user,
-  });
+  return success_response({ res, data: { user } });
 }
 
 //================ updateProfile ==========================
@@ -384,7 +383,7 @@ export async function updateProfile(req, res) {
     update: updateQuery,
   });
 
-  return res.status(201).json({ message: "done", updatedUser });
+  return success_response({ res, statusCode: 201, data: { updatedUser } });
 }
 //================ updatePassword ==========================
 export async function updatePassword(req, res) {
@@ -401,7 +400,7 @@ export async function updatePassword(req, res) {
     update: { password: user.password },
   });
 
-  return res.status(201).json({ message: "done", updatedUser });
+  return success_response({ res, statusCode: 201, data: { updatedUser } });
 }
 
 //================ logout ==========================
@@ -428,7 +427,7 @@ export async function logout(req, res) {
     })
 
   }
-  return res.status(201).json({ message: "done" });
+  return success_response({ res, statusCode: 201 });
 }
 
 //================ forgetPassword ==========================
@@ -436,7 +435,7 @@ export async function forgetPassword(req, res) {
   const { email } = req.body;
   await SendEmailOtp({email ,isConfirmed:true,subject:'forget password'})
 
-  return res.status(200).json({message:'Done'})
+  return success_response({ res, message: "Done" });
 }
 
 //================ resetPassword ==========================
@@ -460,5 +459,5 @@ export async function resetPassword(req, res) {
   })
   if(!user) throw new Error('user not exist or not confirmed')
     await deleteKey(`otp::${email}`)
-  return res.status(200).json({message:'Done'})
+  return success_response({ res, message: "Done" });
 }
