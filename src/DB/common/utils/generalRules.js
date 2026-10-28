@@ -41,7 +41,7 @@ export const generalRules = {
         "content-length": joi.string(),
         "postman-token": joi.string(),
         "content-type": joi.string(),
-    }),
+    }).unknown(true),
     id:joi.string().custom((value, helpers) => {
         return Types.ObjectId.isValid(value) ? value : helpers.message('invalid id');
     })

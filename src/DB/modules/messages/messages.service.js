@@ -1,6 +1,7 @@
 import messageModel from "../../models/message.model.js";
 import userModel from "../../models/user.model.js";
 import * as dbService from "../../service/db.service.js";
+import { isObjectIdOrHexString } from "mongoose";
  
 //================ createMessage ==========================
 
@@ -32,31 +33,62 @@ export async function createMessage(req,res){
 //================ getMessages ==========================
 
 export async function getMessages(req,res){
+  const filter = {
+      recevierId:req.user._id
+    }
+
+
+  const page = Number(req.query.page ?? 1);
+  const size = Number(req.query.size ?? 5);
+  const skip = (page - 1) * size;
+
+  if (!Number.isSafeInteger(page) || page < 1 ||
+      !Number.isSafeInteger(size) || size < 1 ||
+      !Number.isSafeInteger(skip)) {
+    throw new Error('page and size must be positive integers within a safe range', { cause: 400 });
+  }
+
+    const pages =Math.ceil( await dbService.countDocuments({model:messageModel,filter})/size)
+
   const messages =await dbService.find({
     model:messageModel,
-    filter:{
-      recevierId:req.user._id
-    },
-    options:{select:'-senderId'}
+    filter,
+    options:{select:'-senderId',limit:size,skip,sort:{createdAt:-1,_id:-1}}
   })
-    return res.status(200).json({message:'done',messages})
+    return res.status(200).json({message:'done',data:{messages,page ,pages ,size}})
 }
 //================ getSentMessages ==========================
 
 export async function getSentMessages(req,res){
+  const filter ={
+      senderId:req.user._id
+    }
+
+  const page = Number(req.query.page ?? 1);
+  const size = Number(req.query.size ?? 5);
+  const skip = (page - 1) * size;
+  if (!Number.isSafeInteger(page) || page < 1 ||
+      !Number.isSafeInteger(size) || size < 1 ||
+      !Number.isSafeInteger(skip)) {
+    throw new Error('page and size must be positive integers within a safe range', { cause: 400 });
+  }
+
+  const pages =Math.ceil( await dbService.countDocuments({model:messageModel,filter})/size)
+
   const messages =await dbService.find({
     model:messageModel,
-    filter:{
-      senderId:req.user._id
-    },
-    options:{select:'-senderId'}
+    filter,
+    options:{select:'-senderId',limit:size,skip,sort:{createdAt:-1,_id:-1}}
   })
-  return res.status(200).json({message:'done',messages})
+  return res.status(200).json({message:'done',data:{messages,page ,pages ,size}})
 }
 
 //================ getMessageById ==========================
 
 export async function getMessageById(req,res){
+  if (!isObjectIdOrHexString(req.params.id)) {
+    throw new Error('invalid message id', { cause: 400 });
+  }
   const message =await dbService.findOne({
     model:messageModel,
     filter:{

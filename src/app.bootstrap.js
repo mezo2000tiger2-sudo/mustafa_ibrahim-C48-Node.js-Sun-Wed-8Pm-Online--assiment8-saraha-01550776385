@@ -16,7 +16,7 @@ const app  = express();
 
 const limiter = rateLimit({
     windowMs:60 *1000,
-    limit:5,
+    limit:50,
     message:{
         message:'error',
         error:'to many requests'

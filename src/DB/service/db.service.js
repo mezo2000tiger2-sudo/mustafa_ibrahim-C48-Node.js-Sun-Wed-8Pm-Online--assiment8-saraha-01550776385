@@ -19,6 +19,9 @@ export const find = async ({ model, filter = {}, options = {} } = {}) => {
 
     return query.exec()
 }
+export const countDocuments = async ({ model, filter = {} } = {}) => {
+    return await model.countDocuments(filter)
+}
 
 export const findOneAndUpdate = async ({ model,update, filter, options = {} } = {}) => {
     return await model.findOneAndUpdate(filter,update, options)

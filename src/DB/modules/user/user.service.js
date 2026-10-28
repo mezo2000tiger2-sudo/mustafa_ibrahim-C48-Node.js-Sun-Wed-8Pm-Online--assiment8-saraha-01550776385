@@ -111,7 +111,7 @@ export async function signUpWithGmail(req, res) {
     });
   }
 
-  if (user.providor === ProvidorEnum.google) {
+  if (!user.providor === ProvidorEnum.google) {
     throw new Error(`login with your original provider = ${user.providor}`);
   }
   const tokenId = randomUUID();

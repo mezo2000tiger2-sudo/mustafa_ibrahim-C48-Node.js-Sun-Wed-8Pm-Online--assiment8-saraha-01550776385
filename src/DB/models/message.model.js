@@ -4,7 +4,7 @@ const messageSchema =new mongoose.Schema({
     content:{
         type:String,
         required:function(){
-            return this.attachments?.lenght ? false:true
+            return this.attachments?.length ? false:true
         }, 
         trim:true
     },
