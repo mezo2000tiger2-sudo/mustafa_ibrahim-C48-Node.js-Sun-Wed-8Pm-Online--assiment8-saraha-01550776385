@@ -57,7 +57,7 @@ export async function getConversationMessages(req, res) {
             senderId: message.senderId.toString(),
             recevierId: message.recevierId.toString(),
             content: message.content ?? null,
-            attachments: [],
+            attachments: message.attachments ?? [],
             createdAt: message.createdAt,
         })),
         page, pages: Math.ceil(total / size), size,
@@ -81,7 +81,7 @@ export async function sendConversationMessage(req, res) {
             senderId: message.senderId.toString(),
             recevierId: message.recevierId.toString(),
             content: message.content ?? null,
-            attachments: [],
+            attachments: message.attachments ?? [],
             createdAt: message.createdAt,
         },
     } });

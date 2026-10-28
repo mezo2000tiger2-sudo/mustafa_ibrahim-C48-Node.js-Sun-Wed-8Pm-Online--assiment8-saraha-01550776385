@@ -13,11 +13,12 @@ export async function createIdentityRequest(req, res) {
         select: '+senderId',
     });
     if (!message) throw new Error('message not found', { cause: 404 });
+    if (!message.senderId) throw new Error('sender is not logged in', { cause: 409 });
     let request = await dbService.findOne({ model: identityRequestModel, filter: { messageId: message._id } });
     let statusCode = 200;
     if (!request) {
         if (message.conversationId) throw new Error('message already belongs to a conversation', { cause: 409 });
-        if (!message.senderId || !await dbService.findById({ model: userModel, id: message.senderId, select: '_id' })) {
+        if (!await dbService.findById({ model: userModel, id: message.senderId, select: '_id' })) {
             throw new Error('sender identity is unavailable', { cause: 409 });
         }
         if (message.senderId.equals(message.recevierId)) {
