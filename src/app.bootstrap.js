@@ -6,6 +6,8 @@ import userRouter from "./DB/modules/user/user.controller.js";
 import cors from 'cors'
 import connectRedis from "./DB/connection.redis.js";
 import messagesRouter from "./DB/modules/messages/messages.controller.js";
+import identityRequestRouter from "./DB/modules/identity-request/identity-request.controller.js";
+import conversationRouter from "./DB/modules/conversation/conversation.controller.js";
 import {unlink} from 'node:fs/promises'
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
@@ -58,6 +60,8 @@ const bootstrap = async () => {
     
     app.use('/user',userRouter)
     app.use('/message',messagesRouter)
+    app.use('/identity-request',identityRequestRouter)
+    app.use('/conversation',conversationRouter)
 
     app.use('{*demo}', (req, res) => {
         throw new Error(`the endpoint ${req.originalUrl} and the method ${req.method} are not found`,{cause:404})
