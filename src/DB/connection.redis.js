@@ -3,7 +3,10 @@ import { REDIS_URI } from "../../config/config.service.js";
 
 
 export const redis_client = createClient({
-  url: REDIS_URI
+  url: REDIS_URI,
+  socket: {
+    connectTimeout: 15000,
+  },
 });
 
 

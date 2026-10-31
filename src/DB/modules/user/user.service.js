@@ -145,6 +145,7 @@ export async function signUpWithGithub(req, res) {
   const headers = { Authorization: `Bearer ${accessToken}` };
 
   const response = await fetch("https://api.github.com/user", { headers });
+  console.log({response})
   if (!response.ok) {
     throw new Error("invalid access token", { cause: 401 });
   }

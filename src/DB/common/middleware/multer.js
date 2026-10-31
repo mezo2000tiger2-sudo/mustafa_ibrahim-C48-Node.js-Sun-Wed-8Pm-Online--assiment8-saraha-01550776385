@@ -1,7 +1,6 @@
 import multer  from "multer"
 import {randomUUID} from "crypto"
 import fs from "node:fs"
-
 export function multerLocal({customStorage ='general' , customTypes =[]}) {
     if(!fs.existsSync(`uploads/${customStorage}`)) {
         fs.mkdirSync(`uploads/${customStorage}`, { recursive: true });

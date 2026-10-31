@@ -7,6 +7,7 @@ import { validation } from "../../common/middleware/validation.js";
 import { confrimEmailSchema, forgetPasswordSchema, refreshTokenSchema, resendOtpSchema, resetPasswordSchema, shareProfileSchema, signinSchema, signUpSchema, updatePasswordSchema, updateProfileSchema } from "./user.validation.js";
 import { multerLocal } from "../../common/middleware/multer.js";
 import { Multer_Enum } from "../../common/enum/multer.enum.js";
+import cloudinary from "../../common/utils/cloudinary.js";
 
 const userRouter = Router();
 
