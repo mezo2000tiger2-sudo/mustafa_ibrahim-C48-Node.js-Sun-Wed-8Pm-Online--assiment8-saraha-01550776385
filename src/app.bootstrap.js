@@ -83,7 +83,6 @@ const bootstrap = async () => {
         if(err.code ==11000){
             return res.status(404).json({message:'error',error:err.message})
         }
-        console.error(err.stack);
         res.status(err.cause || 500).send({message:'error',error:err.message ,details:err.details? err.details : undefined});
     });
 }

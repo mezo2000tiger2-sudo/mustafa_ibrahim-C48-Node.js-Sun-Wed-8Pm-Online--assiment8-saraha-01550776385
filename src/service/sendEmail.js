@@ -17,7 +17,6 @@ export const sendEmail=async({to ,subject ,html='',attachments ,text=''}={})=>{
         text,
         attachments:attachments ||[]
     });
-    console.log({info})
     return info.accepted.length > 0
 }
 

@@ -132,7 +132,6 @@ export async function signUpWithGmail(req, res) {
       token: { token_access, token_refresh },
     },
   });
-  console.log(playload);
 }
 
 //================ signUpWithGithub ==========================
@@ -145,7 +144,6 @@ export async function signUpWithGithub(req, res) {
   const headers = { Authorization: `Bearer ${accessToken}` };
 
   const response = await fetch("https://api.github.com/user", { headers });
-  console.log({response})
   if (!response.ok) {
     throw new Error("invalid access token", { cause: 401 });
   }
@@ -419,7 +417,6 @@ export async function logout(req, res) {
     await deleteKey(await keys(`revoke_token::${user._id}`))
 
   } else {
-    console.log(req.payload.exp  - Math.floor((Date.now()/1000)))
 
     await setValue({
       key:`revoke_token::${user._id}::${req.payload.jti}`,

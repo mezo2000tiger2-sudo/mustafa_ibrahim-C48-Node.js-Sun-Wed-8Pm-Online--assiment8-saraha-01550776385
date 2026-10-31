@@ -15,7 +15,6 @@ export function validation(schema){
             }
         }
         if (erroResult.length > 0) {
-            console.log({erroResult})
             const err = new Error("Validation failed");
             err.cause = 400;
             err.details = erroResult;
