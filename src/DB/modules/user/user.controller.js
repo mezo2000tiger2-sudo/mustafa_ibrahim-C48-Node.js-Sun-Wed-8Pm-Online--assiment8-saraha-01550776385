@@ -24,7 +24,7 @@ userRouter.get('/share-profile/:id',validation(shareProfileSchema),shareProfile)
 userRouter.patch('/update-profile',authentication,
     multerCloud({customStorage: 'users', customTypes: Multer_Enum.image}).fields([
         {name: 'avatar', maxCount: 1},
-        {name: 'coverImage', maxCount: 3}
+        {name: 'coverImage', maxCount: 1}
     ]),
     (req, res, next) => validation(updateProfileSchema)(req, res, (error) => {
         if (!error) return next()

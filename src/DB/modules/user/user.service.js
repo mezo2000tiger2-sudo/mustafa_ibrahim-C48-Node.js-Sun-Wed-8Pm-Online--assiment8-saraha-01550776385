@@ -388,7 +388,7 @@ export async function updateProfile(req, res) {
       updateQuery.avatar = files.avatar.map(file => ({ url: file.path, publicId: file.filename }));
     }
     if (files.coverImage?.length) {
-      updateQuery.coverImages = files.coverImage.map(file => ({ url: file.path, publicId: file.filename }));
+      updateQuery.coverImage = files.coverImage.map(file => ({ url: file.path, publicId: file.filename }));
     }
     updatedUser = await dbService.findByIdAndUpdate({
       model: userModel,
@@ -405,8 +405,8 @@ export async function updateProfile(req, res) {
   if (files.avatar?.length && Array.isArray(req.user.avatar)) {
     replacedImages.push(...req.user.avatar);
   }
-  if (files.coverImage?.length && Array.isArray(req.user.coverImages)) {
-    replacedImages.push(...req.user.coverImages);
+  if (files.coverImage?.length && Array.isArray(req.user.coverImage)) {
+    replacedImages.push(...req.user.coverImage);
   }
   const cleanupResults = await removeUploads(replacedImages);
   cleanupResults.forEach(result => {

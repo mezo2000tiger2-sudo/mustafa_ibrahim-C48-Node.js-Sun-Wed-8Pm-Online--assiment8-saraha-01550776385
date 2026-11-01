@@ -36,7 +36,7 @@ export const updateProfileSchema= {
 }).required(),
 files:joi.object({
     avatar:joi.array().max(1).items(generalRules.cloudFile),
-    coverImage:joi.array().max(3).items(generalRules.cloudFile.keys({
+    coverImage:joi.array().max(1).items(generalRules.cloudFile.keys({
         fieldname:joi.string().valid('coverImage').required()
     }))
 })

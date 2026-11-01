@@ -72,7 +72,7 @@ const userSchema =new mongoose.Schema({
         default:GenderEnum.male
     },
     avatar: profileImage,
-    coverImages: { ...profileImage, default: () => [] },
+    coverImage: { ...profileImage, default: () => [] },
     providor:{
         type:String,
         enum:Object.values(ProvidorEnum),
