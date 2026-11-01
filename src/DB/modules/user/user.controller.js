@@ -5,7 +5,7 @@ import { authorization } from "../../common/middleware/authorization.js";
 import { RoleEnum } from "../../common/enum/user.enum.js";
 import { validation } from "../../common/middleware/validation.js";
 import { confrimEmailSchema, forgetPasswordSchema, refreshTokenSchema, resendOtpSchema, resetPasswordSchema, shareProfileSchema, signinSchema, signUpSchema, updatePasswordSchema, updateProfileSchema } from "./user.validation.js";
-import { multerLocal } from "../../common/middleware/multer.js";
+import { multerCloud, multerLocal } from "../../common/middleware/multer.js";
 import { Multer_Enum } from "../../common/enum/multer.enum.js";
 import cloudinary from "../../common/utils/cloudinary.js";
 
@@ -21,7 +21,19 @@ userRouter.post('/forget-password',validation(forgetPasswordSchema),forgetPasswo
 userRouter.post('/reset-password',validation(resetPasswordSchema),resetPassword)
 userRouter.get('/profile',authentication,authorization(Object.values(RoleEnum)),getProfile)
 userRouter.get('/share-profile/:id',validation(shareProfileSchema),shareProfile)
-userRouter.patch('/update-profile',validation(updateProfileSchema),authentication,updateProfile)
+userRouter.patch('/update-profile',authentication,
+    multerCloud({customStorage: 'users', customTypes: Multer_Enum.image}).fields([
+        {name: 'avatar', maxCount: 1},
+        {name: 'coverImage', maxCount: 3}
+    ]),
+    (req, res, next) => validation(updateProfileSchema)(req, res, (error) => {
+        if (!error) return next()
+        const files = Object.values(req.files || {}).flat()
+        Promise.allSettled(files.map(file => cloudinary.uploader.destroy(
+            file.filename, {resource_type: file.resource_type}
+        ))).then(() => next(error)).catch(next)
+    }),
+    updateProfile)
 userRouter.patch('/resend-otp',validation(resendOtpSchema),resendOtp)
 userRouter.patch('/update-password',validation(updatePasswordSchema),authentication,updatePassword)
 userRouter.patch('/logout',authentication,logout)

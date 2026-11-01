@@ -9,7 +9,11 @@ const messageSchema =new mongoose.Schema({
         }, 
         trim:true
     },
-    attachments:[String],
+    attachments:[{
+    _id: false,
+    url: { type: String, required: true },
+    publicId: { type: String, required: true }
+    }],
     recevierId:{
         type:Types.ObjectId,
         ref:'User',

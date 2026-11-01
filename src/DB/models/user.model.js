@@ -1,6 +1,23 @@
 import mongoose from "mongoose";
 import { GenderEnum, ProvidorEnum, RoleEnum } from "../common/enum/user.enum.js";
 
+const profileImage = {
+    type: mongoose.Schema.Types.Mixed,
+    validate: {
+        validator(value) {
+            return value == null || typeof value === 'string' || (
+                Array.isArray(value) && value.every(image =>
+                    image && typeof image === 'object' &&
+                    typeof image.url === 'string' && image.url.length > 0 &&
+                    typeof image.publicId === 'string' && image.publicId.length > 0 &&
+                    Object.keys(image).every(key => ['url', 'publicId'].includes(key))
+                )
+            );
+        },
+        message: 'Profile images must be a string or an array of { url, publicId } objects'
+    }
+};
+
 const userSchema =new mongoose.Schema({
     fName:{
         type:String,
@@ -54,8 +71,8 @@ const userSchema =new mongoose.Schema({
         enum:Object.values(GenderEnum),
         default:GenderEnum.male
     },
-    avatar: String,
-    coverImages: [String],
+    avatar: profileImage,
+    coverImages: { ...profileImage, default: () => [] },
     providor:{
         type:String,
         enum:Object.values(ProvidorEnum),

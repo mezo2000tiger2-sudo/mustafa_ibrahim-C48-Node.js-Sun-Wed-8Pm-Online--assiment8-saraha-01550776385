@@ -7,7 +7,7 @@
     "node": "24.18.1"
   },
   "scripts": {
-    "start": "cross-env NODE_ENV=production pm2 start src/index.js -f -i 0",
+    "start": "cross-env NODE_ENV=production node --watch src/index.js",
     "dev": "cross-env NODE_ENV=development pm2 start src/index.js -f -i 0"
   },
   "keywords": [],

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authentication } from "../../common/middleware/authentecation.js";
 import { validation } from "../../common/middleware/validation.js";
 import { createMessageSchema, getMessagesSchema } from "./messages.validation.js";
-import { multerLocal } from "../../common/middleware/multer.js";
+import { multerCloud, multerLocal } from "../../common/middleware/multer.js";
 import { Multer_Enum } from "../../common/enum/multer.enum.js";
 import { createMessage, getMessageById, getMessages, getSentMessages } from "./messages.service.js";
 import { optionalAuthentication } from "../../common/middleware/optionalAuthintication.js";
@@ -10,7 +10,7 @@ import { optionalAuthentication } from "../../common/middleware/optionalAuthinti
 const messagesRouter = Router();
 
 messagesRouter.post('/create-message',
-    multerLocal({
+    multerCloud({
         customStorage: 'messageAttachments',
         customTypes: Multer_Enum.image
     }).array('attachments',3)

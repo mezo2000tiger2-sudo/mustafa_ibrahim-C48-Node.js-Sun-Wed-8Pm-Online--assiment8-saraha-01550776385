@@ -7,9 +7,9 @@ export const createMessageSchema ={
         recevierId:generalRules.id.required(),
     }).required(),
     files: joi.array().max(3).items(
-    generalRules.file.keys({
-        fieldname: joi.string().valid('attachments').required()
-    })
+    generalRules.cloudFile.keys({
+    fieldname: joi.string().valid('attachments').required()
+})
 )
 }
 export const getMessagesSchema ={

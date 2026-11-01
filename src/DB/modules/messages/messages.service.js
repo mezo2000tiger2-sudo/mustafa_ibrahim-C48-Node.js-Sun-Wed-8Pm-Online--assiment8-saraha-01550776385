@@ -6,30 +6,40 @@ import { success_response } from "../../common/utils/successResponse.js";
  
 //================ createMessage ==========================
 
-export async function createMessage(req,res){
-  const {content , recevierId} =req.body
-  if(!content && !req.files.length)throw new Error('content is required')
-    const userExists=await dbService.findById({
-      model:userModel,
-      id:recevierId
-  })
-  if(!userExists)throw new Error('user not exist')
-    let urls =[]
-  if(req.files.length ){
-    for (const file of req?.files) {
-      urls.push(file.path)
-    }
+export async function createMessage(req, res) {
+  const { content, recevierId } = req.body
+  const files = req.files || []
+
+  const cleanup = () =>
+    Promise.all(files.map((f) => cloudinary.uploader.destroy(f.filename, { resource_type: f.resource_type })))
+
+  if (!content && !files.length) {
+    await cleanup()
+    throw new Error("content is required")
   }
-  const message =await dbService.create({
-    model:messageModel,
-    data:{
+
+  const userExists = await dbService.findById({ model: userModel, id: recevierId })
+  if (!userExists) {
+    await cleanup()
+    throw new Error("user not exist")
+  }
+  console.log({files})
+  const attachments = files.map((file) => ({
+    url: file.path,
+    publicId: file.filename,
+  }))
+
+  const message = await dbService.create({
+    model: messageModel,
+    data: {
       content,
-      attachments:urls,
+      attachments,
       recevierId,
-      ...(req.user ? { senderId: req.user._id } : {})
-    }
+      ...(req.user ? { senderId: req.user._id } : {}),
+    },
   })
-  return success_response({ res, data: { message } });
+
+  return success_response({ res, data: { message } })
 }
 //================ getMessages ==========================
 

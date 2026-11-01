@@ -13,6 +13,7 @@ import { eventEmitter } from "../../common/utils/events.js";
 import { emailTemplate } from "../../common/utils/email.template.js";
 import { SendEmailOtp } from "./user.helper.js";
 import { success_response } from "../../common/utils/successResponse.js";
+import cloudinary from "../../common/utils/cloudinary.js";
 
 const client = new OAuth2Client();
 
@@ -369,17 +370,47 @@ export async function shareProfile(req, res) {
 
 //================ updateProfile ==========================
 export async function updateProfile(req, res) {
-  const { fName, lName, age, gender, phone } = req.body;
-  let updateQuery = {};
-  if (fName !== undefined) updateQuery.fName = fName;
-  if (lName !== undefined) updateQuery.lName = lName;
-  if (age !== undefined) updateQuery.age = age;
-  if (gender !== undefined) updateQuery.gender = gender;
-  if (phone !== undefined) updateQuery.phone = Encrypt(phone);
-  const updatedUser = await dbService.findByIdAndUpdate({
-    model: userModel,
-    id: req.user._id,
-    update: updateQuery,
+  const files = req.files || {};
+  const uploadedFiles = Object.values(files).flat();
+  const removeUploads = (images) => Promise.allSettled(images.map(image =>
+    cloudinary.uploader.destroy(image.publicId, { resource_type: "image" })
+  ));
+  let updatedUser;
+  try {
+    const { fName, lName, age, gender, phone } = req.body;
+    const updateQuery = {};
+    if (fName !== undefined) updateQuery.fName = fName;
+    if (lName !== undefined) updateQuery.lName = lName;
+    if (age !== undefined) updateQuery.age = age;
+    if (gender !== undefined) updateQuery.gender = gender;
+    if (phone !== undefined) updateQuery.phone = Encrypt(phone);
+    if (files.avatar?.length) {
+      updateQuery.avatar = files.avatar.map(file => ({ url: file.path, publicId: file.filename }));
+    }
+    if (files.coverImage?.length) {
+      updateQuery.coverImages = files.coverImage.map(file => ({ url: file.path, publicId: file.filename }));
+    }
+    updatedUser = await dbService.findByIdAndUpdate({
+      model: userModel,
+      id: req.user._id,
+      update: updateQuery,
+    });
+    if (!updatedUser) throw new Error("user not found", { cause: 404 });
+  } catch (error) {
+    await removeUploads(uploadedFiles.map(file => ({ publicId: file.filename })));
+    throw error;
+  }
+
+  const replacedImages = [];
+  if (files.avatar?.length && Array.isArray(req.user.avatar)) {
+    replacedImages.push(...req.user.avatar);
+  }
+  if (files.coverImage?.length && Array.isArray(req.user.coverImages)) {
+    replacedImages.push(...req.user.coverImages);
+  }
+  const cleanupResults = await removeUploads(replacedImages);
+  cleanupResults.forEach(result => {
+    if (result.status === "rejected") console.error("Failed to delete replaced profile image:", result.reason);
   });
 
   return success_response({ res, statusCode: 201, data: { updatedUser } });

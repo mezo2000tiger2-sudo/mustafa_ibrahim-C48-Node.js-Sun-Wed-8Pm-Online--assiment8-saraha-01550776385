@@ -34,7 +34,12 @@ export const updateProfileSchema= {
         phone: joi.string()
 
 }).required(),
-file:generalRules.file 
+files:joi.object({
+    avatar:joi.array().max(1).items(generalRules.cloudFile),
+    coverImage:joi.array().max(3).items(generalRules.cloudFile.keys({
+        fieldname:joi.string().valid('coverImage').required()
+    }))
+})
 }
 
 export const signinSchema= {

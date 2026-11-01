@@ -24,6 +24,18 @@ export const generalRules = {
     }).messages({
         'any.required':'avatar is required',
     }),
+    cloudFile:joi.object({
+        fieldname:joi.string().valid('avatar').required(),
+        originalname:joi.string().required(),
+        encoding:joi.string().required(),
+        mimetype:joi.string().valid('image/png', 'image/jpg', 'image/jpeg').required().messages({
+            'any.only':'file must be an image file (png, jpg, jpeg)',
+        }),
+        filename:joi.string().required(),
+        path:joi.string().uri().required(),
+        size:joi.number().required(),
+        resource_type:joi.string().valid('image', 'video', 'raw').required(),
+    }),
     token:joi.object({
       authorization: joi.string()
         .pattern(/^Bearer\s+\S+$/)
