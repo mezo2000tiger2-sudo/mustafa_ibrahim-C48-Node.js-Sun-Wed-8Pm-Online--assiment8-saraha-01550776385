@@ -71,7 +71,7 @@ export async function sendConversationMessage(req, res) {
         model: messageModel,
         data: {
             content: req.body.content.trim(), attachments: [],
-            senderId: req.user._id, recevierId, conversationId: conversation._id,
+            senderId: req.user._id, conversationId: conversation._id,
         },
     });
     return success_response({ res, statusCode: 201, data: {
