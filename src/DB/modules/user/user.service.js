@@ -100,7 +100,7 @@ export async function signUpWithGmail(req, res) {
     },
   });
   if (!user) {
-    user = await dbService.create({
+    [user] = await dbService.create({
       model: userModel,
       data: {
         fName: given_name,
@@ -113,7 +113,7 @@ export async function signUpWithGmail(req, res) {
     });
   }
 
-  if (!user.providor === ProvidorEnum.google) {
+  if (user.providor !== ProvidorEnum.google) {
     throw new Error(`login with your original provider = ${user.providor}`);
   }
   const tokenId = randomUUID();
