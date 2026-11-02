@@ -65,15 +65,23 @@ export async function getConversationMessages(req, res) {
 }
 
 export async function sendConversationMessage(req, res) {
+    const content = req.body.content?.trim();
+    const files = req.files ?? [];
+    if (!content && !files.length) {
+        throw new Error('content or attachments are required', { cause: 400 });
+    }
+    const attachments = files.map(file => ({ url: file.path, publicId: file.filename }));
     const conversation = await findConversation(req.params.conversationId, req.user._id);
     const recevierId = conversation.participants.find(id => !id.equals(req.user._id));
     const [message] = await dbService.create({
         model: messageModel,
         data: {
-            content: req.body.content.trim(), attachments: [],
+            content, attachments, recevierId,
             senderId: req.user._id, conversationId: conversation._id,
         },
     });
+    // Uploaded files now belong to the saved message.
+    req.files = [];
     return success_response({ res, statusCode: 201, data: {
         chatMessage: {
             _id: message._id.toString(),

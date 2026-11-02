@@ -21,5 +21,8 @@ export const getConversationMessagesSchema = {
 export const sendConversationMessageSchema = {
     params,
     query: noQuery,
-    body: joi.object({ content: joi.string().trim().min(1).max(5000).required() }).required(),
+    body: joi.object({ content: joi.string().trim().max(5000).allow('') }).required(),
+    files: joi.array().max(3).items(generalRules.cloudFile.keys({
+        fieldname: joi.string().valid('attachments').required(),
+    })),
 };
