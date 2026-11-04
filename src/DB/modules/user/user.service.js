@@ -266,26 +266,25 @@ export async function signIn(req, res) {
 
   const user = await dbService.findOne({
     model: userModel,
-    filter: { email: email.toLowerCase(),isConfirmed:{$exists:true},providor:ProvidorEnum.system },
+    filter: { email: email.toLowerCase()},
   });
 
   if (!user) {
-    throw new Error("email not exist");
+    throw new Error("email not exist", { cause: 401 });
   }
   if (user.providor !== ProvidorEnum.system) {
-    throw new Error(`login with your original provider = ${user.providor}`);
+    throw new Error(`login with your original provider = ${user.providor}`, { cause: 400 });
+  }
+  if (!Compare(password, user.password)) {
+    throw new Error("inValid password", { cause: 401 });
   }
   if (!user.isConfirmed) {
-    throw new Error("account not confirmed");
+    throw new Error("account not confirmed", { cause: 403 });
   }
-  if (! Compare(password, user.password)) {
-    throw new Error("inValid password");
-  }
+  
   const tokenId = randomUUID();
   const token_access = jwt.sign({ userId: user._id }, "y-access", {
     expiresIn: 60 * 5,
-    audience: "https://localhost:4000",
-    issuer: "https://localhost:3000 ",
     jwtid: tokenId,
     // notBefore:60,
     // noTimestamp:true
